@@ -23,9 +23,9 @@ DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
 
 
 @bot.tree.command(
-    description='핑!'
+    description='규칙에 따라 로판파샤스 아이디를 부여합니다.'
 )
-async def id(ctx: Interaction, member: Member, role: int):
+async def id(ctx: Interaction, member: Member, role: int = 5):
     if not (1 <= role <= 6):
         await ctx.response.send_message(':x: 잘못된 역할 형식입니다.')
         return
@@ -40,7 +40,7 @@ async def id(ctx: Interaction, member: Member, role: int):
     name = member.display_name if DECORATED_NICK_RE.match(member.display_name) is None else member.display_name[8:]
 
     await member.edit(nick=f'{candidate} {name}')
-    await ctx.response.send_message(f'이름을 변경했습니다.')
+    await ctx.response.send_message(f'이름을 변경했습니다.\n> `{member.display_name}` > `{candidate} {name}`')
 
 
 if __name__ == '__main__':
