@@ -2,6 +2,7 @@ import re
 from asyncio import sleep
 from math import inf
 from sys import argv
+from typing import Tuple
 
 from discord import Intents, Interaction, Member, Role
 from discord.app_commands import MissingRole
@@ -157,7 +158,7 @@ async def new_study_error(ctx: Interaction, error: Exception):
     print(error.with_traceback(error.__traceback__))
 
 
-def parse_role_name(name: str) -> tuple[bool, int, int, str]:
+def parse_role_name(name: str) -> Tuple[bool, int, int, str]:
     """
     출력 값으로는 tuple[bool, int, int, str] 형태의 값을 출력합니다.
 
