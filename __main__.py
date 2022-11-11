@@ -157,5 +157,91 @@ async def new_study_error(ctx: Interaction, error: Exception):
     print(error.with_traceback(error.__traceback__))
 
 
+def parse_role_name(name: str) -> tuple[bool, int, int, str]:
+    """
+    출력 값으로는 tuple[bool, int, int, str] 형태의 값을 출력합니다.
+
+    첫 번째 요소가 True이면 role이 강의라는 의미이고, False이면 스터디라는 의미입니다.
+    두 번째 요소는 기수, 세 번째 요소는 인덱스 번호입니다.
+    마지막 요소는 강의/스터디의 이름입니다.
+    """
+
+    if name.startswith('스터디:'):
+        name = name[4:]
+    elif name.startswith('강의:'):
+        name = name[3:]
+    else:
+        raise ValueError
+
+    is_lecture = name[0] == '1'
+    term = int(name[1:3])
+    index = int(name[3:4])
+    title = name[5:]
+
+    return is_lecture, term, index, title
+
+
+@bot.tree.command(
+    description='강의 목록을 확인합니다.'
+)
+async def lectures(ctx: Interaction, term: int):
+    if term <= 0:
+        await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.')
+        return
+
+    lines = list()
+    for role in ctx.guild.roles:
+        try:
+            is_lecture, role_term, index, title = parse_role_name(role.name)
+        except ValueError:
+            continue
+
+        if not is_lecture:
+            continue
+        if role_term != term:
+            continue
+
+        lines.append(role.name)
+
+    list_string = '> ' + '\n> '.join(lines[::-1])
+
+    if not lines:
+        await ctx.response.send_message(f'{term}기에는 (아직) 강의가 없습니다!')
+        return
+
+    await ctx.response.send_message(f'{term}기의 강의 목록은 다음과 같습니다.\n{list_string}')
+
+
+@bot.tree.command(
+    description='스터디 목록을 확인합니다.'
+)
+async def studies(ctx: Interaction, term: int):
+    if term <= 0:
+        await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.')
+        return
+
+    lines = list()
+    for role in ctx.guild.roles:
+        try:
+            is_lecture, role_term, index, title = parse_role_name(role.name)
+        except ValueError:
+            continue
+
+        if is_lecture:
+            continue
+        if role_term != term:
+            continue
+
+        lines.append(role.name)
+
+    list_string = '> ' + '\n> '.join(lines[::-1])
+
+    if not lines:
+        await ctx.response.send_message(f'{term}기에는 (아직) 스터디가 없습니다!')
+        return
+
+    await ctx.response.send_message(f'{term}기의 스터디 목록은 다음과 같습니다.\n{list_string}')
+
+
 if __name__ == '__main__':
     bot.run(get_secret('test_bot_token' if '-t' in argv else 'bot_token'))
