@@ -99,6 +99,7 @@ async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Memb
     position = inf
     index = 0
     for guild_role in sorted(ctx.guild.roles, key=lambda x: x.name):
+        await sleep(0)
         if not guild_role.name.startswith('강의:'):
             continue
         position = min(guild_role.position, position)
