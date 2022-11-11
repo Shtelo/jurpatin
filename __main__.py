@@ -4,6 +4,7 @@ from math import inf
 from sys import argv
 
 from discord import Intents, Interaction, Member, Role
+from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
 from pymysql.cursors import DictCursor
 from sat_datetime import SatDatetime
@@ -93,6 +94,7 @@ async def check_role(ctx: Interaction, role: Role):
 @bot.tree.command(
     description='강의를 개설합니다.'
 )
+@has_role(get_const('role.harnavin'))
 async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member, joinable: bool):
     position = inf
     index = 0
