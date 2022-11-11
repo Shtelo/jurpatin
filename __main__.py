@@ -24,9 +24,10 @@ DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
 
 
 @bot.tree.command(
+    name='id',
     description='규칙에 따라 로판파샤스 아이디를 부여합니다.'
 )
-async def id(ctx: Interaction, member: Member, role: int = 5):
+async def id_(ctx: Interaction, member: Member, role: int = 5):
     if not (1 <= role <= 6):
         await ctx.response.send_message(':x: 잘못된 역할 형식입니다.')
         return
