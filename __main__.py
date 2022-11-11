@@ -7,10 +7,9 @@ from discord import Intents, Interaction, Member, Role
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
-from pymysql.cursors import DictCursor
 from sat_datetime import SatDatetime
 
-from util import get_secret, get_const, database
+from util import get_secret, get_const
 
 intents = Intents.default()
 intents.members = True
@@ -123,11 +122,6 @@ async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Memb
     await role.edit(position=position)
     await erasheniluin.add_roles(role)
 
-    with database.cursor(DictCursor) as cursor:
-        cursor.execute('INSERT INTO lecture VALUES (%s, %s, %s, %s, %s, %s)',
-                       (name, role.id, term, erasheniluin.id, index, joinable))
-        database.commit()
-
     await ctx.response.send_message(f'{role.mention} 강의를 개설했습니다.')
 
 
@@ -150,10 +144,6 @@ async def new_study(ctx: Interaction, name: str, term: int):
     role = await ctx.guild.create_role(
         name=f'스터디:2{term:02d}{index+1} ' + name, colour=get_const('color.study'), mentionable=True)
     await role.edit(position=position)
-
-    with database.cursor() as cursor:
-        cursor.execute('INSERT INTO study VALUES (%s, %s, %s, %s)', (name, role.id, term, index))
-        database.commit()
 
     await ctx.response.send_message(f'{role.mention} 스터디를 개설했습니다.')
 
