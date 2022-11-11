@@ -2,7 +2,7 @@ import re
 from asyncio import sleep
 from sys import argv
 
-from discord import Intents, Interaction, Member
+from discord import Intents, Interaction, Member, Role
 from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
@@ -73,6 +73,19 @@ async def role_(ctx: Interaction, member: Member):
             await member.add_roles(role)
 
     await ctx.response.send_message(f'역할을 부여했습니다.')
+
+
+@bot.tree.command(
+    description='역할에 어떤 멤버가 있는지 확인합니다.'
+)
+async def check_role(ctx: Interaction, role: Role):
+    members = list()
+    for member in role.members:
+        members.append(f'- {member.display_name} ({member})')
+
+    list_string = '> ' + '\n> '.join(sorted(members))
+
+    await ctx.response.send_message(f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다.\n{list_string}')
 
 
 if __name__ == '__main__':
