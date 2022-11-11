@@ -92,24 +92,31 @@ async def check_role(ctx: Interaction, role: Role):
     await ctx.response.send_message(f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다.\n{list_string}')
 
 
+async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
+    prefix = '강의' if is_lecture else '스터디'
+    position = inf
+    index = 0
+    for guild_role in sorted(ctx.guild.roles, key=lambda x: x.name):
+        await sleep(0)
+        if not guild_role.name.startswith(f'{prefix}:'):
+            continue
+        position = min(guild_role.position, position)
+
+        guild_name = guild_role.name[len(prefix):]
+        role_term = int(guild_name[2:4])
+        role_index = int(guild_name[4:5])
+        if role_term != term:
+            continue
+        index = max(index, role_index)
+    return index, position
+
+
 @bot.tree.command(
     description='강의를 개설합니다.'
 )
 @has_role(get_const('role.harnavin'))
 async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member, joinable: bool):
-    position = inf
-    index = 0
-    for guild_role in sorted(ctx.guild.roles, key=lambda x: x.name):
-        await sleep(0)
-        if not guild_role.name.startswith('강의:'):
-            continue
-        position = min(guild_role.position, position)
-
-        role_term = int(guild_role.name[4:6])
-        role_index = int(guild_role.name[6:7])
-        if role_term != term:
-            continue
-        index = max(index, role_index)
+    index, position = await get_position(ctx, term)
 
     role = await ctx.guild.create_role(
         name=f'강의:1{term:02d}{index+1} ' + name, colour=get_const('color.lecture'), mentionable=True)
@@ -126,6 +133,33 @@ async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Memb
 
 @new_lecture.error
 async def new_lecture_error(ctx: Interaction, error: Exception):
+    if isinstance(error, MissingRole):
+        await ctx.response.send_message(':x: 명령어를 사용하기 위한 권한이 부족합니다!')
+        return
+
+    print(error.with_traceback(error.__traceback__))
+
+
+@bot.tree.command(
+    description='스터디를 개설합니다.'
+)
+@has_role(get_const('role.harnavin'))
+async def new_study(ctx: Interaction, name: str, term: int):
+    index, position = await get_position(ctx, term, False)
+
+    role = await ctx.guild.create_role(
+        name=f'스터디:2{term:02d}{index+1} ' + name, colour=get_const('color.study'), mentionable=True)
+    await role.edit(position=position)
+
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO study VALUES (%s, %s, %s, %s)', (name, role.id, term, index))
+        database.commit()
+
+    await ctx.response.send_message(f'{role.mention} 스터디를 개설했습니다.')
+
+
+@new_study.error
+async def new_study_error(ctx: Interaction, error: Exception):
     if isinstance(error, MissingRole):
         await ctx.response.send_message(':x: 명령어를 사용하기 위한 권한이 부족합니다!')
         return
