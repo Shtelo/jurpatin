@@ -114,7 +114,7 @@ async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
     description='강의를 개설합니다.'
 )
 @has_role(get_const('role.harnavin'))
-async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member, joinable: bool):
+async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member):
     index, position = await get_position(ctx, term)
 
     role = await ctx.guild.create_role(
