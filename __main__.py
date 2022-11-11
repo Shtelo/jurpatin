@@ -4,6 +4,7 @@ from math import inf
 from sys import argv
 
 from discord import Intents, Interaction, Member, Role
+from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
 from pymysql.cursors import DictCursor
@@ -121,6 +122,15 @@ async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Memb
         database.commit()
 
     await ctx.response.send_message(f'{role.mention} 강의를 개설했습니다.')
+
+
+@new_lecture.error
+async def new_lecture_error(ctx: Interaction, error: Exception):
+    if isinstance(error, MissingRole):
+        await ctx.response.send_message(':x: 명령어를 사용하기 위한 권한이 부족합니다!')
+        return
+
+    print(error.with_traceback(error.__traceback__))
 
 
 if __name__ == '__main__':
