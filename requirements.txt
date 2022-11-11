@@ -1,0 +1,2 @@
+discord==2.0.0
+sat-datetime~=1.0.1
