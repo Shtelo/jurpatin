@@ -1,12 +1,14 @@
 import re
 from asyncio import sleep
+from math import inf
 from sys import argv
 
 from discord import Intents, Interaction, Member, Role
 from discord.ext.commands import Bot, when_mentioned
+from pymysql.cursors import DictCursor
 from sat_datetime import SatDatetime
 
-from util import get_secret, get_const
+from util import get_secret, get_const, database
 
 intents = Intents.default()
 intents.members = True
@@ -86,6 +88,36 @@ async def check_role(ctx: Interaction, role: Role):
     list_string = '> ' + '\n> '.join(sorted(members))
 
     await ctx.response.send_message(f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다.\n{list_string}')
+
+
+@bot.tree.command(
+    description='강의를 개설합니다.'
+)
+async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member, joinable: bool):
+    position = inf
+    index = 0
+    for guild_role in sorted(ctx.guild.roles, key=lambda x: x.name):
+        if not guild_role.name.startswith('강의:'):
+            continue
+        position = min(guild_role.position, position)
+
+        role_term = int(guild_role.name[4:6])
+        role_index = int(guild_role.name[6:7])
+        if role_term != term:
+            continue
+        index = max(index, role_index)
+
+    role = await ctx.guild.create_role(
+        name=f'강의:1{term:02d}{index+1} ' + name, colour=get_const('color.lecture'), mentionable=True)
+    await role.edit(position=position)
+    await erasheniluin.add_roles(role)
+
+    with database.cursor(DictCursor) as cursor:
+        cursor.execute('INSERT INTO lecture VALUES (%s, %s, %s, %s, %s, %s)',
+                       (name, role.id, term, erasheniluin.id, index, joinable))
+        database.commit()
+
+    await ctx.response.send_message(f'{role.mention} 강의를 개설했습니다.')
 
 
 if __name__ == '__main__':
