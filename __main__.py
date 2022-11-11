@@ -9,7 +9,7 @@ from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
-from util import get_secret, get_const
+from util import get_secret, get_const, eul_reul
 
 intents = Intents.default()
 intents.members = True
@@ -241,6 +241,22 @@ async def studies(ctx: Interaction, term: int):
         return
 
     await ctx.response.send_message(f'{term}기의 스터디 목록은 다음과 같습니다.\n{list_string}')
+
+
+@bot.tree.command(
+    description='역할을 부여합니다.'
+)
+async def give_role(ctx: Interaction, role: Role):
+    await ctx.user.add_roles(role)
+    await ctx.response.send_message(f'{ctx.user.mention}에게 {role}{eul_reul(role.name)} 부여했습니다.')
+
+
+@bot.tree.command(
+    description='역할을 제거합니다.'
+)
+async def remove_role(ctx: Interaction, role: Role):
+    await ctx.user.remove_roles(role)
+    await ctx.response.send_message(f'{ctx.user.mention}에게서 {role}{eul_reul(role.name)} 제거했습니다.')
 
 
 if __name__ == '__main__':
