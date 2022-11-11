@@ -66,8 +66,11 @@ async def role_(ctx: Interaction, member: Member):
         role = ctx.guild.get_role(ROLE_ID_TABLE[i])
         if role in member.roles:
             await member.remove_roles(role)
-    role = ctx.guild.get_role(ROLE_ID_TABLE[role_index])
-    await member.add_roles(role)
+    for i in range(role_index, 5):
+        await sleep(0)
+        role = ctx.guild.get_role(ROLE_ID_TABLE[i])
+        if role not in member.roles:
+            await member.add_roles(role)
 
     await ctx.response.send_message(f'역할을 부여했습니다.')
 
