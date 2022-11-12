@@ -1,10 +1,10 @@
 import re
-from asyncio import sleep
+from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
 from math import inf
 from sys import argv
 from typing import Tuple
 
-from discord import Intents, Interaction, Member, Role
+from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
@@ -50,21 +50,17 @@ async def id_(ctx: Interaction, member: Member, role: int = 5):
 
 
 ROLE_ID_TABLE = (
-    get_const('role.harnavin'), get_const('role.erasheniluin'),
-    get_const('role.quocerin'), get_const('role.lofanin'), get_const('role.hjulienin')
-)
+    get_const('role.harnavin'), get_const('role.erasheniluin'), get_const('role.quocerin'), get_const('role.lofanin'),
+    get_const('role.hjulienin'))
 
 
-@bot.tree.command(
-    name='role',
-    description='닉네임에 따라 로판파샤스 역할을 부여합니다.'
-)
+@bot.tree.command(name='role', description='닉네임에 따라 로판파샤스 역할을 부여합니다.')
 async def role_(ctx: Interaction, member: Member):
     if (role_number := member.display_name[0]) not in '12345':
         await ctx.response.send_message(f'닉네임이 학번으로 시작하지 않거나 역할 지급 대상이 아닙니다.')
         return
 
-    role_index = int(role_number)-1
+    role_index = int(role_number) - 1
     for i in range(role_index):
         await sleep(0)
         role = ctx.guild.get_role(ROLE_ID_TABLE[i])
@@ -79,9 +75,7 @@ async def role_(ctx: Interaction, member: Member):
     await ctx.response.send_message(f'역할을 부여했습니다.')
 
 
-@bot.tree.command(
-    description='역할에 어떤 멤버가 있는지 확인합니다.'
-)
+@bot.tree.command(description='역할에 어떤 멤버가 있는지 확인합니다.')
 async def check_role(ctx: Interaction, role: Role):
     members = list()
     for member in role.members:
@@ -111,15 +105,13 @@ async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
     return index, position
 
 
-@bot.tree.command(
-    description='강의를 개설합니다.'
-)
+@bot.tree.command(description='강의를 개설합니다.')
 @has_role(get_const('role.harnavin'))
 async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member):
     index, position = await get_position(ctx, term)
 
-    role = await ctx.guild.create_role(
-        name=f'강의:1{term:02d}{index+1} ' + name, colour=get_const('color.lecture'), mentionable=True)
+    role = await ctx.guild.create_role(name=f'강의:1{term:02d}{index + 1} ' + name, colour=get_const('color.lecture'),
+        mentionable=True)
     await role.edit(position=position)
     await erasheniluin.add_roles(role)
 
@@ -135,15 +127,13 @@ async def new_lecture_error(ctx: Interaction, error: Exception):
     print(error.with_traceback(error.__traceback__))
 
 
-@bot.tree.command(
-    description='스터디를 개설합니다.'
-)
+@bot.tree.command(description='스터디를 개설합니다.')
 @has_role(get_const('role.harnavin'))
 async def new_study(ctx: Interaction, name: str, term: int):
     index, position = await get_position(ctx, term, False)
 
-    role = await ctx.guild.create_role(
-        name=f'스터디:2{term:02d}{index+1} ' + name, colour=get_const('color.study'), mentionable=True)
+    role = await ctx.guild.create_role(name=f'스터디:2{term:02d}{index + 1} ' + name, colour=get_const('color.study'),
+        mentionable=True)
     await role.edit(position=position)
 
     await ctx.response.send_message(f'{role.mention} 스터디를 개설했습니다.')
@@ -182,9 +172,7 @@ def parse_role_name(name: str) -> Tuple[bool, int, int, str]:
     return is_lecture, term, index, title
 
 
-@bot.tree.command(
-    description='강의 목록을 확인합니다.'
-)
+@bot.tree.command(description='강의 목록을 확인합니다.')
 async def lectures(ctx: Interaction, term: int):
     if term <= 0:
         await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.')
@@ -213,9 +201,7 @@ async def lectures(ctx: Interaction, term: int):
     await ctx.response.send_message(f'{term}기의 강의 목록은 다음과 같습니다.\n{list_string}')
 
 
-@bot.tree.command(
-    description='스터디 목록을 확인합니다.'
-)
+@bot.tree.command(description='스터디 목록을 확인합니다.')
 async def studies(ctx: Interaction, term: int):
     if term <= 0:
         await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.')
@@ -244,17 +230,13 @@ async def studies(ctx: Interaction, term: int):
     await ctx.response.send_message(f'{term}기의 스터디 목록은 다음과 같습니다.\n{list_string}')
 
 
-@bot.tree.command(
-    description='역할을 부여합니다.'
-)
+@bot.tree.command(description='역할을 부여합니다.')
 async def give_role(ctx: Interaction, role: Role):
     await ctx.user.add_roles(role)
     await ctx.response.send_message(f'{ctx.user.mention}에게 {role}{eul_reul(role.name)} 부여했습니다.')
 
 
-@bot.tree.command(
-    description='역할을 제거합니다.'
-)
+@bot.tree.command(description='역할을 제거합니다.')
 async def remove_role(ctx: Interaction, role: Role):
     await ctx.user.remove_roles(role)
     await ctx.response.send_message(f'{ctx.user.mention}에게서 {role}{eul_reul(role.name)} 제거했습니다.')
