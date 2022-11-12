@@ -1,0 +1,20 @@
+name: Deploy Ürpatin
+
+on:
+  push:
+    branches: [ "master" ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH Command
+        uses: D3rHase/ssh-command-action@v0.2.1
+        with:
+          HOST: sch.shtelo.org
+          USER: pi
+          PRIVATE_SSH_KEY: ${{ secrets.SHTELOPI_SSH_KEY }}
+          COMMAND: tmux send-keys -t jurpatin ^C "git pull ; python3 -m pip install -r requirements.txt ; python3 ." Enter
