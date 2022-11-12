@@ -20,13 +20,6 @@ def override_const(key: str, value):
 
 
 def parse_json(path: str, key: str):
-    """
-    Parse json file and return value of key
-
-    :param path: path to json file
-    :param key: key to get value
-    :return: value of key
-    """
     with open(path, 'r') as file:
         const = json.load(file)
 

@@ -136,7 +136,8 @@ async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
 async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member):
     index, position = await get_position(ctx, term)
 
-    role = await ctx.guild.create_role(name=f'강의:1{term:02d}{index + 1} ' + name, colour=get_const('color.lecture'),
+    role = await ctx.guild.create_role(
+        name=f'강의:1{term:02d}{index + 1} ' + name, colour=get_const('color.lecture'),
         mentionable=True)
     await role.edit(position=position)
     await erasheniluin.add_roles(role)
@@ -158,7 +159,8 @@ async def new_lecture_error(ctx: Interaction, error: Exception):
 async def new_study(ctx: Interaction, name: str, term: int):
     index, position = await get_position(ctx, term, False)
 
-    role = await ctx.guild.create_role(name=f'스터디:2{term:02d}{index + 1} ' + name, colour=get_const('color.study'),
+    role = await ctx.guild.create_role(
+        name=f'스터디:2{term:02d}{index + 1} ' + name, colour=get_const('color.study'),
         mentionable=True)
     await role.edit(position=position)
 
