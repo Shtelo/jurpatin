@@ -72,7 +72,7 @@ async def id_(ctx: Interaction, member: Member, role: int = 5):
             return
 
     await member.edit(nick=post_name)
-    await message.edit(content=f'이름을 변경했습니다.\n> `{member.display_name}` > {post_name}')
+    await message.edit(content=f'이름을 변경했습니다.\n> `{member.display_name}` > `{post_name}`')
 
 
 ROLE_ID_TABLE = (
