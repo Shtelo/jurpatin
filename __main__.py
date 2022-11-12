@@ -2,7 +2,7 @@ import re
 from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
 from math import inf
 from sys import argv
-from typing import Tuple
+from typing import Tuple, List
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage
 from discord.app_commands import MissingRole
@@ -27,10 +27,13 @@ async def on_ready():
 DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
 
 
-@bot.tree.command(
-    name='id',
-    description='규칙에 따라 로판파샤스 아이디를 부여합니다.'
-)
+def check_reaction(emojis: List[str], ctx: Interaction, message_id: int):
+    def checker(reaction: Reaction, user: User):
+        return user.id == ctx.user.id and str(reaction.emoji) in emojis and reaction.message.id == message_id
+    return checker
+
+
+@bot.tree.command(name='id', description='규칙에 따라 로판파샤스 아이디를 부여합니다.')
 async def id_(ctx: Interaction, member: Member, role: int = 5):
     if not (1 <= role <= 6):
         await ctx.response.send_message(':x: 잘못된 역할 형식입니다.')
@@ -44,9 +47,32 @@ async def id_(ctx: Interaction, member: Member, role: int = 5):
         index += 1
 
     name = member.display_name if DECORATED_NICK_RE.match(member.display_name) is None else member.display_name[8:]
+    post_name = f'{candidate} {name}'
 
-    await member.edit(nick=f'{candidate} {name}')
-    await ctx.response.send_message(f'이름을 변경했습니다.\n> `{member.display_name}` > `{candidate} {name}`')
+    await ctx.response.send_message(
+        f'현재 이름은 `{member.display_name}`이고, 이름을 변경하면 `{post_name}`으로 변경됩니다.\n이름을 변경하시겠습니까?')
+    message: InteractionMessage = await ctx.original_response()
+    await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
+
+    try:
+        res: Tuple[Reaction] = await bot.wait_for(
+            'reaction_add',
+            timeout=60.0,
+            check=check_reaction(
+                [get_const('emoji.o'), get_const('emoji.x')],
+                ctx,
+                message.id))
+    except AsyncioTimeoutError:
+        await message.edit(content=f':x: 시간이 초과되어 작업이 취소되었습니다.')
+        return
+    else:
+        await message.clear_reactions()
+        if res[0].emoji == get_const('emoji.x'):
+            await message.edit(content=f':x: 사용자가 작업을 취소하였습니다.')
+            return
+
+    await member.edit(nick=post_name)
+    await message.edit(content=f'이름을 변경했습니다.\n> `{member.display_name}` > {post_name}')
 
 
 ROLE_ID_TABLE = (
