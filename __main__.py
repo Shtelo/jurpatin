@@ -33,6 +33,9 @@ def check_reaction(emojis: List[str], ctx: Interaction, message_id: int):
     return checker
 
 
+OX_EMOJIS = [get_const('emoji.x'), get_const('emoji.o')]
+
+
 @bot.tree.command(name='id', description='규칙에 따라 로판파샤스 아이디를 부여합니다.')
 async def id_(ctx: Interaction, member: Member, role: int = 5):
     if not (1 <= role <= 6):
@@ -58,18 +61,15 @@ async def id_(ctx: Interaction, member: Member, role: int = 5):
         res: Tuple[Reaction] = await bot.wait_for(
             'reaction_add',
             timeout=60.0,
-            check=check_reaction(
-                [get_const('emoji.o'), get_const('emoji.x')],
-                ctx,
-                message.id))
+            check=check_reaction(OX_EMOJIS, ctx, message.id))
+        await message.clear_reactions()
     except AsyncioTimeoutError:
         await message.edit(content=f':x: 시간이 초과되어 작업이 취소되었습니다.')
         return
-    else:
-        await message.clear_reactions()
-        if res[0].emoji == get_const('emoji.x'):
-            await message.edit(content=f':x: 사용자가 작업을 취소하였습니다.')
-            return
+
+    if res[0].emoji == get_const('emoji.x'):
+        await message.edit(content=f':x: 사용자가 작업을 취소하였습니다.')
+        return
 
     await member.edit(nick=post_name)
     await message.edit(content=f'이름을 변경했습니다.\n> `{member.display_name}` > `{post_name}`')
@@ -134,6 +134,22 @@ async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
 @bot.tree.command(description='강의를 개설합니다.')
 @has_role(get_const('role.harnavin'))
 async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member):
+    # noinspection DuplicatedCode
+    await ctx.response.send_message(f'이름이 `{name}`인 {term}기 강의를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?')
+    message = await ctx.original_response()
+    await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
+
+    try:
+        res: Tuple[Reaction] = await bot.wait_for('reaction_add', check=check_reaction(OX_EMOJIS, ctx, message.id))
+        await message.clear_reactions()
+    except AsyncioTimeoutError:
+        await message.edit(content=':x: 시간이 초과되어 작업이 취소되었습니다.')
+        return
+
+    if res[0].emoji == get_const('emoji.x'):
+        await message.edit(content=':x: 사용자가 작업을 취소하였습니다.')
+        return
+
     index, position = await get_position(ctx, term)
 
     role = await ctx.guild.create_role(
@@ -142,7 +158,7 @@ async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Memb
     await role.edit(position=position)
     await erasheniluin.add_roles(role)
 
-    await ctx.response.send_message(f'{role.mention} 강의를 개설했습니다.')
+    await message.edit(content=f'{role.mention} 강의를 개설했습니다.')
 
 
 @new_lecture.error
@@ -157,6 +173,22 @@ async def new_lecture_error(ctx: Interaction, error: Exception):
 @bot.tree.command(description='스터디를 개설합니다.')
 @has_role(get_const('role.harnavin'))
 async def new_study(ctx: Interaction, name: str, term: int):
+    # noinspection DuplicatedCode
+    await ctx.response.send_message(f'이름이 `{name}`인 {term}기 스터디를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?')
+    message = await ctx.original_response()
+    await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
+
+    try:
+        res: Tuple[Reaction] = await bot.wait_for('reaction_add', check=check_reaction(OX_EMOJIS, ctx, message.id))
+        await message.clear_reactions()
+    except AsyncioTimeoutError:
+        await message.edit(content=':x: 시간이 초과되어 작업이 취소되었습니다.')
+        return
+
+    if res[0].emoji == get_const('emoji.x'):
+        await message.edit(content=':x: 사용자가 작업을 취소하였습니다.')
+        return
+
     index, position = await get_position(ctx, term, False)
 
     role = await ctx.guild.create_role(
@@ -164,7 +196,7 @@ async def new_study(ctx: Interaction, name: str, term: int):
         mentionable=True)
     await role.edit(position=position)
 
-    await ctx.response.send_message(f'{role.mention} 스터디를 개설했습니다.')
+    await message.edit(content=f'{role.mention} 스터디를 개설했습니다.')
 
 
 @new_study.error
