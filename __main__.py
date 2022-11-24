@@ -104,10 +104,12 @@ async def role_(ctx: Interaction, member: Member):
 @bot.tree.command(description='역할에 어떤 멤버가 있는지 확인합니다.')
 async def check_role(ctx: Interaction, role: Role):
     members = list()
-    member_numbers = set()
+    last_member_number = ''
+    last_index = 0
     for member in role.members:
-        members.append(f'- {member.display_name} ({member})')
-        member_numbers.add(member.display_name[:7])
+        if last_member_number != (last_member_number := member.display_name[:7]):
+            last_index += 1
+        members.append(f'{last_index}. {member.display_name} ({member})')
 
     list_string = '> ' + '\n> '.join(sorted(members))
 
