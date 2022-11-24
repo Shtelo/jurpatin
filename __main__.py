@@ -104,13 +104,17 @@ async def role_(ctx: Interaction, member: Member):
 @bot.tree.command(description='역할에 어떤 멤버가 있는지 확인합니다.')
 async def check_role(ctx: Interaction, role: Role):
     members = list()
+    member_numbers = set()
     for member in role.members:
         members.append(f'- {member.display_name} ({member})')
+        member_numbers.add(member.display_name[:7])
 
     list_string = '> ' + '\n> '.join(sorted(members))
 
-    await ctx.response.send_message(f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다.\n{list_string}')
-
+    await ctx.response.send_message(
+            f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다. (총 {len(member_numbers)}명, 계정 {len(members)}개)'
+            f'\n{list_string}'
+    )
 
 async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
     prefix = '강의' if is_lecture else '스터디'
