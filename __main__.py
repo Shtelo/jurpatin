@@ -109,9 +109,9 @@ async def check_role(ctx: Interaction, role: Role):
     for member in role.members:
         if last_member_number != (last_member_number := member.display_name[:7]):
             last_index += 1
-        members.append(f'{last_index}. {member.display_name} ({member})')
+        members.append((f'{member.display_name} ({member})', last_index))
 
-    list_string = '> ' + '\n> '.join(sorted(members))
+    list_string = '> ' + '\n> '.join(map(lambda x: f'{x[1]}. {x[0]}', sorted(members)))
 
     await ctx.response.send_message(
             f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다. (총 {last_index}명, 계정 {len(members)}개)'
