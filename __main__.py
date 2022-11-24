@@ -114,7 +114,7 @@ async def check_role(ctx: Interaction, role: Role):
     list_string = '> ' + '\n> '.join(sorted(members))
 
     await ctx.response.send_message(
-            f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다. (총 {len(member_numbers)}명, 계정 {len(members)}개)'
+            f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다. (총 {last_index}명, 계정 {len(members)}개)'
             f'\n{list_string}'
     )
 
