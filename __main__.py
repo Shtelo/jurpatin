@@ -26,7 +26,7 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member: Member):
-    if member.guild != get_const('guild.lofanfashasch'):
+    if member.guild.id != get_const('guild.lofanfashasch'):
         return
 
     candidate = get_proper_id(member, 5, member.guild)
