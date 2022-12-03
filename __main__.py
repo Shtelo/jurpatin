@@ -31,7 +31,9 @@ async def on_member_join(member: Member):
 
     candidate = get_proper_id(member, 5, member.guild)
     name = member.display_name if DECORATED_NICK_RE.match(member.display_name) is None else member.display_name[8:]
-    await member.edit(nick=f'{candidate} {name}')
+    nick = f'{candidate} {name}'
+    await member.edit(nick=nick)
+    await give_role(member, nick[0], member.guild)
 
 
 DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
@@ -96,24 +98,27 @@ ROLE_ID_TABLE = (
     get_const('role.hjulienin'))
 
 
+async def give_role(member: Member, role_number: str, guild: Guild):
+    role_index = int(role_number) - 1
+    for i in range(role_index):
+        await sleep(0)
+        role = guild.get_role(ROLE_ID_TABLE[i])
+        if role in member.roles:
+            await member.remove_roles(role)
+    for i in range(role_index, 5):
+        await sleep(0)
+        role = guild.get_role(ROLE_ID_TABLE[i])
+        if role not in member.roles:
+            await member.add_roles(role)
+
+
 @bot.tree.command(name='role', description='닉네임에 따라 로판파샤스 역할을 부여합니다.')
 async def role_(ctx: Interaction, member: Member):
     if (role_number := member.display_name[0]) not in '12345':
         await ctx.response.send_message(f'닉네임이 학번으로 시작하지 않거나 역할 지급 대상이 아닙니다.')
         return
 
-    role_index = int(role_number) - 1
-    for i in range(role_index):
-        await sleep(0)
-        role = ctx.guild.get_role(ROLE_ID_TABLE[i])
-        if role in member.roles:
-            await member.remove_roles(role)
-    for i in range(role_index, 5):
-        await sleep(0)
-        role = ctx.guild.get_role(ROLE_ID_TABLE[i])
-        if role not in member.roles:
-            await member.add_roles(role)
-
+    await give_role(member, role_number, ctx.guild)
     await ctx.response.send_message(f'역할을 부여했습니다.')
 
 
