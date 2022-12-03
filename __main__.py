@@ -118,6 +118,7 @@ async def check_role(ctx: Interaction, role: Role):
             f'\n{list_string}'
     )
 
+
 async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
     prefix = '강의' if is_lecture else '스터디'
     position = inf
