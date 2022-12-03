@@ -20,7 +20,7 @@ def override_const(key: str, value):
 
 
 def parse_json(path: str, key: str):
-    with open(path, 'r') as file:
+    with open(path, 'r', encoding='utf-8') as file:
         const = json.load(file)
 
     key = key.split('.')
