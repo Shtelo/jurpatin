@@ -33,7 +33,7 @@ async def on_member_join(member: Member):
     name = member.display_name if DECORATED_NICK_RE.match(member.display_name) is None else member.display_name[8:]
     nick = f'{candidate} {name}'
     await member.edit(nick=nick)
-    await give_role(member, nick[0], member.guild)
+    await assign_role(member, nick[0], member.guild)
 
 
 DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
@@ -98,7 +98,7 @@ ROLE_ID_TABLE = (
     get_const('role.hjulienin'))
 
 
-async def give_role(member: Member, role_number: str, guild: Guild):
+async def assign_role(member: Member, role_number: str, guild: Guild):
     role_index = int(role_number) - 1
     for i in range(role_index):
         await sleep(0)
@@ -118,7 +118,7 @@ async def role_(ctx: Interaction, member: Member):
         await ctx.response.send_message(f'닉네임이 학번으로 시작하지 않거나 역할 지급 대상이 아닙니다.')
         return
 
-    await give_role(member, role_number, ctx.guild)
+    await assign_role(member, role_number, ctx.guild)
     await ctx.response.send_message(f'역할을 부여했습니다.')
 
 
