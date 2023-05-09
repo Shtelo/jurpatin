@@ -342,7 +342,7 @@ async def dday(ctx: Interaction, year: int, month: int, day: int):
     if days > 0:
         after = f' 당일을 포함하면 __{days + 1}일째__입니다.'
 
-    await ctx.response.send_message(f'오늘은 {year}월 {month}일 {day}일에 대해 __D{days:+}__입니다.{after}')
+    await ctx.response.send_message(f'오늘은 {year}년 {month}월 {day}일에 대해 __D{days:+}__입니다.{after}')
 
 
 if __name__ == '__main__':
