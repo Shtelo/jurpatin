@@ -1,5 +1,6 @@
 import re
 from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
+from datetime import date
 from math import inf
 from sys import argv
 from typing import Tuple, List
@@ -42,6 +43,7 @@ DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
 def check_reaction(emojis: List[str], ctx: Interaction, message_id: int):
     def checker(reaction: Reaction, user: User):
         return user.id == ctx.user.id and str(reaction.emoji) in emojis and reaction.message.id == message_id
+
     return checker
 
 
@@ -328,6 +330,19 @@ async def give_role(ctx: Interaction, role: Role):
 async def remove_role(ctx: Interaction, role: Role):
     await ctx.user.remove_roles(role)
     await ctx.response.send_message(f'{ctx.user.mention}에게서 {role}{eul_reul(role.name)} 제거했습니다.')
+
+
+@bot.tree.command(description='D-Day를 계산합니다.')
+async def dday(ctx: Interaction, year: int, month: int, day: int):
+    today = date.today()
+    diff = today - date(year, month, day)
+    days = diff.days
+
+    after = ''
+    if days > 0:
+        after = f' 당일을 포함하면 __{days + 1}일째__입니다.'
+
+    await ctx.response.send_message(f'오늘은 {year}월 {month}일 {day}일에 대해 __D{days:+}__입니다.{after}')
 
 
 if __name__ == '__main__':
