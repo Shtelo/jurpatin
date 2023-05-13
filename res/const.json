@@ -9,6 +9,10 @@
   "guild": {
     "lofanfashasch": 918750974854696981
   },
+  "channel": {
+    "general": 918750974854696984,
+    "test_general": 815221879421796353
+  },
   "color": {
     "lecture": 3132529,
     "study": 15449146

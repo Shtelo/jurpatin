@@ -5,7 +5,7 @@ from math import inf
 from sys import argv
 from typing import Tuple, List
 
-from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild
+from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
@@ -35,6 +35,36 @@ async def on_member_join(member: Member):
     nick = f'{candidate} {name}'
     await member.edit(nick=nick)
     await assign_role(member, nick[0], member.guild)
+
+
+message_logs = dict()
+
+
+@bot.event
+async def on_voice_state_update(member: Member, before: VoiceState, after: VoiceState):
+    if member.guild.id != get_const('guild.lofanfashasch'):
+        return
+
+    text_channel = member.guild.get_channel(get_const('channel.general'))
+
+    # if leaving
+    if before.channel is not None and len(before.channel.members) < 1:
+        if before.channel.id not in message_logs:
+            return
+        message_id = message_logs.pop(before.channel.id)
+        message = await text_channel.fetch_message(message_id)
+        await message.delete()
+        return
+
+    # if connecting to empty channel
+    if after.channel is None:
+        return
+    if len(after.channel.members) > 1:
+        return
+
+    content = f'{after.channel.mention} 채널이 활성화되었습니다.'
+    message = await text_channel.send(content)
+    message_logs[after.channel.id] = message.id
 
 
 DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
