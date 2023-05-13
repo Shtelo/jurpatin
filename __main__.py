@@ -62,7 +62,8 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
     if len(after.channel.members) > 1:
         return
 
-    content = f'{after.channel.mention} 채널이 활성화되었습니다.'
+    bored_mention = member.guild.get_role(get_const('role.bored_mention'))
+    content = f'{after.channel.mention} 채널이 활성화되었습니다. {bored_mention.mention}'
     message = await text_channel.send(content)
     message_logs[after.channel.id] = message.id
 
