@@ -163,7 +163,7 @@ async def check_role(ctx: Interaction, role: Role):
     for member in sorted(role.members, key=lambda x: x.display_name):
         if last_member_number != (last_member_number := member.display_name[:7]):
             last_index += 1
-        members.append(f'{last_index}. {member.display_name} ({member})')
+        members.append(f'{last_index}. `{member.display_name}` ({member})')
 
     list_string = '> ' + '\n> '.join(members)
 
