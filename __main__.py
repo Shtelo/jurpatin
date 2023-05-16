@@ -1,6 +1,6 @@
 import re
 from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from math import inf
 from sys import argv
 from typing import Tuple, List
@@ -21,7 +21,7 @@ bot = Bot(when_mentioned, intents=intents)
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    # await bot.tree.sync()
     print('Ürpatin is running.')
 
 
@@ -51,9 +51,18 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
     if before.channel is not None and len(before.channel.members) < 1:
         if before.channel.id not in message_logs:
             return
+
         message_id = message_logs.pop(before.channel.id)
+        if message_id is None:
+            return
+
         message = await text_channel.fetch_message(message_id)
+        duration = datetime.now(timezone.utc) - message.created_at
         await message.delete()
+
+        if duration >= timedelta(hours=1):
+            await text_channel.send(f'{before.channel.mention} 채널이 비활성화되었습니다. (활성 시간: {duration})')
+
         return
 
     # if connecting to empty channel
@@ -63,7 +72,7 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
         return
 
     bored_mention = member.guild.get_role(get_const('role.bored_mention'))
-    content = f'{after.channel.mention} 채널이 활성화되었습니다. {bored_mention.mention}'
+    content = f'{after.channel.mention} 채널이 활성화되었습니다. {bored_mention.mention if bored_mention is not None else ""}'
     message = await text_channel.send(content)
     message_logs[after.channel.id] = message.id
 
