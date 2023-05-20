@@ -21,7 +21,7 @@ bot = Bot(when_mentioned, intents=intents)
 
 @bot.event
 async def on_ready():
-    # await bot.tree.sync()
+    await bot.tree.sync()
     print('Ürpatin is running.')
 
 
@@ -67,6 +67,8 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
 
     # if connecting to empty channel
     if after.channel is None:
+        return
+    if before.channel is not None and before.channel.id == after.channel.id:
         return
     if len(after.channel.members) > 1:
         return
