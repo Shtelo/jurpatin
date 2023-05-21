@@ -404,8 +404,7 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
     message_id = message_logs[channel.id]
     message = await ctx.channel.fetch_message(message_id)
     duration = datetime.now(timezone.utc) - message.created_at
-    await ctx.response.send_message(f'{channel.mention}은 __{message.created_at}__에 활성화되었습니다. '
-                                    f'업타임은 __{duration}__입니다.')
+    await ctx.response.send_message(f'{channel.mention}의 업타임은 __{duration}__입니다.')
 
 
 if __name__ == '__main__':
