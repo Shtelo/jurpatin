@@ -3,9 +3,10 @@ from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
 from datetime import date, datetime, timedelta, timezone
 from math import inf
 from sys import argv
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
-from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState
+from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
+    VoiceChannel
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
@@ -385,6 +386,26 @@ async def dday(ctx: Interaction, year: int, month: int, day: int):
         after = f' 당일을 포함하면 __{days + 1}일째__입니다.'
 
     await ctx.response.send_message(f'오늘은 {year}년 {month}월 {day}일에 대해 __D{days:+}__입니다.{after}')
+
+
+@bot.tree.command(description='음성 채널의 업타임을 계산합니다.')
+async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
+    if channel is None and ctx.user.voice is not None:
+        channel = ctx.user.voice.channel
+
+    if channel is None:
+        await ctx.response.send_message(f'음성 채널 정보를 찾을 수 없습니다.')
+        return
+
+    if channel.id not in message_logs:
+        await ctx.response.send_message(f'음성 채널 시작 시간에 대한 정보가 없습니다.')
+        return
+
+    message_id = message_logs[channel.id]
+    message = await ctx.channel.fetch_message(message_id)
+    duration = datetime.now(timezone.utc) - message.created_at
+    await ctx.response.send_message(f'{channel.mention}은 __{message.created_at}__에 활성화되었습니다. '
+                                    f'업타임은 __{duration}__입니다.')
 
 
 if __name__ == '__main__':
