@@ -6,7 +6,7 @@ from sys import argv
 from typing import Tuple, List, Optional
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
-    VoiceChannel
+    VoiceChannel, NotFound
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Bot, when_mentioned
@@ -394,15 +394,25 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
         channel = ctx.user.voice.channel
 
     if channel is None:
-        await ctx.response.send_message(f'음성 채널 정보를 찾을 수 없습니다.')
+        await ctx.response.send_message('음성 채널 정보를 찾을 수 없습니다.')
         return
 
-    if channel.id not in message_logs:
-        await ctx.response.send_message(f'음성 채널 시작 시간에 대한 정보가 없습니다.')
+    if ctx.guild.id != get_const('guild.lofanfashasch'):
+        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.')
+        pass
+
+    message_id = message_logs.get(channel.id)
+    if message_id is None:
+        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.')
         return
 
-    message_id = message_logs[channel.id]
-    message = await ctx.channel.fetch_message(message_id)
+    text_channel = ctx.guild.get_channel(get_const('channel.general'))
+    try:
+        message = await text_channel.fetch_message(message_id)
+    except NotFound:
+        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.')
+        return
+
     duration = datetime.now(timezone.utc) - message.created_at
     await ctx.response.send_message(f'{channel.mention}의 업타임은 __{duration}__입니다.')
 
