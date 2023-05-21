@@ -76,7 +76,7 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
 
     generals = get_const('voice_channel.generals')
     bored_mention = member.guild.get_role(get_const('role.bored_mention'))
-    mention_string = bored_mention.mention if bored_mention is not None and after.channel in generals else ""
+    mention_string = bored_mention.mention if bored_mention is not None and after.channel.id in generals else ""
 
     message = await text_channel.send(f'{after.channel.mention} 채널이 활성화되었습니다. {mention_string}')
     message_logs[after.channel.id] = message.id
