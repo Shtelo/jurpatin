@@ -22,7 +22,7 @@ bot = Bot(when_mentioned, intents=intents)
 
 @bot.event
 async def on_ready():
-    # await bot.tree.sync()
+    await bot.tree.sync()
     print('Ürpatin is running.')
 
 
