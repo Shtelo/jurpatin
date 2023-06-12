@@ -22,7 +22,7 @@ bot = Bot(when_mentioned, intents=intents)
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    # await bot.tree.sync()
     print('Ürpatin is running.')
 
 
@@ -81,7 +81,7 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
     else:
         mention_string = ""
 
-    message = await text_channel.send(f'{after.channel.mention} 채널이 활성화되었습니다. {mention_string}')
+    message = await text_channel.send(f'{member.mention}님이 {after.channel.mention} 채널을 활성화했습니다. {mention_string}')
     message_logs[after.channel.id] = message.id
 
 
