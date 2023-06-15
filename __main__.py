@@ -60,8 +60,6 @@ async def today_statistics():
     global today_messages, today_calls, today_people
     global last_record
 
-    print("loop")
-
     # check new day
     previous = last_record
     last_record = datetime.now(timezone.utc)
