@@ -6,9 +6,10 @@ from sys import argv
 from typing import Tuple, List, Optional
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
-    VoiceChannel, NotFound
+    VoiceChannel, NotFound, RawReactionActionEvent
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
+from discord.ext import tasks
 from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
@@ -23,6 +24,7 @@ bot = Bot(when_mentioned, intents=intents)
 @bot.event
 async def on_ready():
     await bot.tree.sync()
+    today_statistics.start()
     print('Ürpatin is running.')
 
 
@@ -38,6 +40,45 @@ async def on_member_join(member: Member):
     await assign_role(member, nick[0], member.guild)
 
 
+today_messages = 0
+today_messages_length = 0
+today_calls = 0
+today_reactions = 0
+today_people = set()
+last_record = datetime.now(timezone.utc)
+
+
+def generate_today_statistics() -> str:
+    return f'> `{today_messages}`개의 메시지가 전송되었습니다. (총 길이: `{today_messages_length}`문자)\n' \
+           f'> 음성 채널이 `{today_calls}`번 활성화되었습니다.\n' \
+           f'> `{len(today_people)}`명의 사람이 서버에 접속했습니다.\n' \
+           f'> 총 `{today_reactions}`개의 반응이 추가되었습니다.'
+
+
+@tasks.loop(minutes=1)
+async def today_statistics():
+    global today_messages, today_calls, today_people
+    global last_record
+
+    print("loop")
+
+    # check new day
+    previous = last_record
+    last_record = datetime.now(timezone.utc)
+    if previous.day == last_record.day:
+        return
+
+    # reset
+    today_messages = 0
+    today_calls = 0
+    today_people = set()
+
+    # get server and send statistics message
+    text_channel = bot.get_channel(get_const('channel.general'))
+
+    await text_channel.send(f'# `{previous.date()}`의 통계\n{generate_today_statistics()}')
+
+
 message_logs = dict()
 
 
@@ -47,8 +88,12 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
 
 
 async def voice_channel_notification(member: Member, before: VoiceState, after: VoiceState):
+    global today_calls
+
     if member.guild.id != get_const('guild.lofanfashasch'):
         return
+
+    today_people.add(member.id)
 
     text_channel = member.guild.get_channel(get_const('channel.general'))
 
@@ -87,6 +132,29 @@ async def voice_channel_notification(member: Member, before: VoiceState, after: 
 
     message = await text_channel.send(f'{member.mention}님이 {after.channel.mention} 채널을 활성화했습니다. {mention_string}')
     message_logs[after.channel.id] = message.id
+
+    today_calls += 1
+
+
+@bot.event
+async def on_message(message: InteractionMessage):
+    global today_messages, today_messages_length
+
+    # record today statistics
+    if message.guild.id == get_const('guild.lofanfashasch'):
+        today_messages += 1
+        today_messages_length += len(message.content)
+        today_people.add(message.author.id)
+
+
+@bot.event
+async def on_raw_reaction_add(payload: RawReactionActionEvent):
+    global today_reactions
+
+    # record today statistics
+    if payload.guild_id == get_const('guild.lofanfashasch'):
+        today_reactions += 1
+        today_people.add(payload.user_id)
 
 
 DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
@@ -424,6 +492,13 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
 
     duration = datetime.now(timezone.utc) - message.created_at
     await ctx.response.send_message(f'{channel.mention}의 업타임은 __{duration}__입니다.')
+
+
+@bot.tree.command(description='지금까지의 오늘 통계를 확인합니다.')
+async def today(ctx: Interaction):
+    now = datetime.now(timezone.utc)
+
+    await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{generate_today_statistics()}')
 
 
 if __name__ == '__main__':
