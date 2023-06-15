@@ -43,6 +43,10 @@ message_logs = dict()
 
 @bot.event
 async def on_voice_state_update(member: Member, before: VoiceState, after: VoiceState):
+    await voice_channel_notification(member, before, after)
+
+
+async def voice_channel_notification(member: Member, before: VoiceState, after: VoiceState):
     if member.guild.id != get_const('guild.lofanfashasch'):
         return
 
