@@ -66,15 +66,15 @@ async def today_statistics():
     if previous.day == last_record.day:
         return
 
-    # reset
-    today_messages = 0
-    today_calls = 0
-    today_people = set()
-
     # get server and send statistics message
     text_channel = bot.get_channel(get_const('channel.general'))
 
     await text_channel.send(f'# `{previous.date()}`의 통계\n{generate_today_statistics()}')
+
+    # reset
+    today_messages = 0
+    today_calls = 0
+    today_people = set()
 
 
 message_logs = dict()
