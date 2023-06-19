@@ -139,10 +139,13 @@ async def on_message(message: InteractionMessage):
     global today_messages, today_messages_length
 
     # record today statistics
-    if message.guild.id == get_const('guild.lofanfashasch'):
-        today_messages += 1
-        today_messages_length += len(message.content)
-        today_people.add(message.author.id)
+    try:
+        if message.guild.id == get_const('guild.lofanfashasch'):
+            today_messages += 1
+            today_messages_length += len(message.content)
+            today_people.add(message.author.id)
+    except AttributeError:
+        pass
 
 
 @bot.event
