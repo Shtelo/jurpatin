@@ -17,6 +17,7 @@ from util import get_secret, get_const, eul_reul
 
 intents = Intents.default()
 intents.members = True
+intents.message_content = True
 
 bot = Bot(when_mentioned, intents=intents)
 
@@ -57,12 +58,13 @@ def generate_today_statistics() -> str:
 
 @tasks.loop(minutes=1)
 async def today_statistics():
-    global today_messages, today_calls, today_people
+    global today_messages, today_messages_length, today_calls, today_people
     global last_record
 
     # check new day
     previous = last_record
     last_record = datetime.now(timezone.utc)
+    # if same day, do nothing
     if previous.day == last_record.day:
         return
 
@@ -73,8 +75,9 @@ async def today_statistics():
 
     # reset
     today_messages = 0
+    today_messages_length = 0
     today_calls = 0
-    today_people = set()
+    today_people.clear()
 
 
 message_logs = dict()
