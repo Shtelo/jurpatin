@@ -50,13 +50,15 @@ today_call_duration = timedelta()
 last_record = datetime.now(timezone.utc)
 
 
-def generate_today_statistics() -> str:
+async def generate_today_statistics() -> str:
+    await sleep(0)
+
     # calculate total call duration
     call_duration = today_call_duration
     # add current call duration
     now = datetime.now(timezone.utc)
     for message_id in message_logs:
-        message = bot.get_channel(get_const('channel.general')).fetch_message(message_id)
+        message = await bot.get_channel(get_const('channel.general')).fetch_message(message_id)
         call_duration += now - message.created_at
 
     # make formatted string
@@ -82,7 +84,7 @@ async def today_statistics():
     # get server and send statistics message
     text_channel = bot.get_channel(get_const('channel.general'))
 
-    await text_channel.send(f'# `{previous.date()}`의 통계\n{generate_today_statistics()}')
+    await text_channel.send(f'# `{previous.date()}`의 통계\n{await generate_today_statistics()}')
 
     # reset
     today_messages = 0
@@ -514,7 +516,7 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
 async def today(ctx: Interaction):
     now = datetime.now(timezone.utc)
 
-    await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{generate_today_statistics()}', ephemeral=True)
+    await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}', ephemeral=True)
 
 
 if __name__ == '__main__':
