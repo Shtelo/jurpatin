@@ -57,7 +57,7 @@ async def generate_today_statistics() -> str:
     call_duration = today_call_duration
     # add current call duration
     now = datetime.now(timezone.utc)
-    for message_id in message_logs:
+    for message_id in message_logs.values():
         message = await bot.get_channel(get_const('channel.general')).fetch_message(message_id)
         call_duration += now - message.created_at
 
