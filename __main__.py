@@ -58,13 +58,17 @@ async def generate_today_statistics() -> str:
     # add current call duration
     now = datetime.now(timezone.utc)
     for message_id in message_logs.values():
-        message = await bot.get_channel(get_const('channel.general')).fetch_message(message_id)
+        try:
+            message = await bot.get_channel(get_const('channel.general')).fetch_message(message_id)
+        except NotFound:
+            continue
+
         call_duration += now - message.created_at
 
     # make formatted string
     return f'* `{today_messages}`개의 메시지가 전송되었습니다. (총 길이: `{today_messages_length}`문자)\n' \
            f'* 음성 채널이 `{today_calls}`번 활성화되었습니다.\n' \
-           f'  * 총 통화 길이는 `{today_call_duration}`입니다.\n' \
+           f'  * 총 통화 길이는 `{call_duration}`입니다.\n' \
            f'* `{len(today_people)}`명의 사람이 서버에서 상호작용했습니다.\n' \
            f'* 총 `{today_reactions}`개의 반응이 추가되었습니다.'
 
