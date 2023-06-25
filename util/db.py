@@ -40,3 +40,26 @@ def add_account(user_id: int, money: int) -> None:
     with database.cursor() as cursor:
         cursor.execute('UPDATE money SET money = money + %s WHERE id = %s', (money, user_id))
         database.commit()
+
+
+def set_value(key: str, value: str) -> None:
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO `values` (`key`, value) VALUES (%s, %s)', (key, value))
+        database.commit()
+
+
+def get_value(key: str) -> Optional[str]:
+    with database.cursor() as cursor:
+        cursor.execute('SELECT value FROM `values` WHERE `key` = %s', (key,))
+        data = cursor.fetchone()
+
+        if data:
+            return data[0]
+
+        return None
+
+
+def remove_value(key: str) -> None:
+    with database.cursor() as cursor:
+        cursor.execute('DELETE FROM `values` WHERE `key` = %s', (key,))
+        database.commit()
