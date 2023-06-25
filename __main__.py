@@ -521,7 +521,8 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
 async def today(ctx: Interaction):
     now = datetime.now(timezone.utc)
 
-    await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}', ephemeral=True)
+    await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}',
+                                    ephemeral=True)
 
 
 if __name__ == '__main__':
