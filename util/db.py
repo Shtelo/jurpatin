@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Any
+from typing import Optional, Any
 
 from pymysql import connect
 
