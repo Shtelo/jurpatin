@@ -67,10 +67,11 @@ def remove_value(key: str) -> None:
         database.commit()
 
 
-def get_inventory(user_id: int) -> tuple[tuple[Any, ...], ...]:
+def get_inventory(user_id: int) -> dict[str, int]:
     with database.cursor() as cursor:
         cursor.execute('SELECT name, amount FROM inventory WHERE id = %s', (user_id,))
-        return cursor.fetchall()
+        # noinspection PyTypeChecker
+        return dict(cursor.fetchall())
 
 
 def set_inventory(user_id: int, name: str, amount: int) -> None:

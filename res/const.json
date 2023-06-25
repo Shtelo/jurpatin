@@ -30,6 +30,7 @@
   },
   "db": {
     "ppl": "yesterday_active_people",
-    "yesterday_ppl": "yesterday_ppl"
+    "yesterday_ppl": "yesterday_ppl",
+    "ppl_having": "ppl_having"
   }
 }

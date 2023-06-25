@@ -14,7 +14,7 @@ from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
 from util import get_secret, get_const, eul_reul
-from util.db import get_money, add_money, set_value, get_value
+from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory
 
 intents = Intents.default()
 intents.members = True
@@ -578,6 +578,76 @@ async def ppl(ctx: Interaction):
     await ctx.response.send_message(f'로판파샤스의 금일 PPL 지수는 __**{ppl_index}**__입니다.\n'
                                     f'작일 PPL 지수는 __{yesterday_ppl}__이고, '
                                     f'오늘은 어제에 비해 __**{multiplier * 100:.2f}%로 {up_down}**__했습니다.')
+
+
+@bot.tree.command(description='PPL 상품을 구매합니다.')
+async def buy_ppl(ctx: Interaction, amount: int = 1):
+    if amount < 1:
+        await ctx.response.send_message(f':x: 구매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
+        return
+
+    # fetch ppl index from database
+    ppl_index = int(get_value(get_const('db.ppl')))
+    price = amount * ppl_index
+
+    if ppl_index <= 0:
+        await ctx.response.send_message(
+            f':x: PPL 지수가 0 이하일 때에는 상품을 구매할 수 없습니다.', ephemeral=True)
+        return
+
+    # check if user has enough money
+    having = get_money(ctx.user.id)
+    if having < price:
+        await ctx.response.send_message(
+            f':x: 소지금이 부족합니다. '
+            f'(소지금: __**{having / 100:,.2f} Ł**__, '
+            f'가격: __{amount:,} \* {ppl_index:,} Ł = **{price:,.2f} Ł**__)',
+            ephemeral=True)
+        return
+
+    # update database
+    add_money(ctx.user.id, -price)
+    add_inventory(ctx.user.id, get_const('db.ppl_having'), amount)
+
+    now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'))
+    await ctx.response.send_message(
+        f'PPL 상품 __{amount:,}__개를 구매했습니다. '
+        f'현재 상품 당 PPL 가치는 __{ppl_index:,} Ł__이며, 총 __{now_having:,}__개를 소지하고 있습니다.')
+
+
+@bot.tree.command(description='PPL 상품을 판매합니다.')
+async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
+    if amount < 1:
+        await ctx.response.send_message(f':x: 판매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
+        return
+
+    # fetch ppl index from database
+    ppl_index = int(get_value(get_const('db.ppl')))
+    price = amount * ppl_index
+
+    # handle ppl_index == 0
+    if ppl_index <= 0 and not force:
+        await ctx.response.send_message(
+            f':x: 현재 PPL 지수가 0 이하입니다. '
+            f'그래도 판매하시려면 `force` 값을 `True`로 설정해주시기 바랍니다.', ephemeral=True)
+        return
+
+    # check if user has enough ppl
+    having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+    if_all = ''
+    if having < amount:
+        if_all = f'현재 소지하고 있는 PPL 상품은 총 __{having}__개입니다. 상품을 모두 판매합니다.\n'
+        amount = having
+
+    # update database
+    add_money(ctx.user.id, price)
+    set_inventory(ctx.user.id, get_const('db.ppl_having'), having - amount)
+
+    now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+    await ctx.response.send_message(
+        f'{if_all}'
+        f'PPL 상품 __{amount:,}__개를 판매하여 __**{price:,.2f} Ł**__를 벌었습니다. '
+        f'PPL 상품의 현재 가치는 __{ppl_index:,} Ł__이며, 총 __{now_having:,}__개를 소지하고 있습니다.')
 
 
 if __name__ == '__main__':
