@@ -14,6 +14,7 @@ from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
 from util import get_secret, get_const, eul_reul
+from util.db import get_money
 
 intents = Intents.default()
 intents.members = True
@@ -522,6 +523,12 @@ async def today(ctx: Interaction):
     now = datetime.now(timezone.utc)
 
     await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}', ephemeral=True)
+
+
+@bot.tree.command(description='소지금을 확인합니다.')
+async def money(ctx: Interaction):
+    having = get_money(ctx.user.id)
+    await ctx.response.send_message(f'{ctx.user.mention}의 소지금은 __{having / 100:,.2f}__ Ł입니다.', ephemeral=True)
 
 
 if __name__ == '__main__':
