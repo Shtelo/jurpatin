@@ -27,5 +27,9 @@
   "emoji": {
     "o": "⭕",
     "x": "❌"
+  },
+  "db": {
+    "ppl": "yesterday_active_people",
+    "yesterday_ppl": "yesterday_ppl"
   }
 }

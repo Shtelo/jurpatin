@@ -14,7 +14,7 @@ from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
 from util import get_secret, get_const, eul_reul
-from util.db import get_money, add_money
+from util.db import get_money, add_money, set_value, get_value
 
 intents = Intents.default()
 intents.members = True
@@ -71,7 +71,6 @@ async def generate_today_statistics() -> str:
     return f'* `{today_messages}`개의 메시지가 전송되었습니다. (총 길이: `{today_messages_length}`문자)\n' \
            f'* 음성 채널이 `{today_calls}`번 활성화되었습니다.\n' \
            f'  * 총 통화 길이는 `{call_duration}`입니다.\n' \
-           f'* `{len(today_people)}`명의 사람이 서버에서 상호작용했습니다.\n' \
            f'* 총 `{today_reactions}`개의 반응이 추가되었습니다.'
 
 
@@ -86,6 +85,11 @@ async def today_statistics():
     # if same day, do nothing
     if previous.day == last_record.day:
         return
+
+    # record ppl on database
+    previous_ppl = int(get_value(get_const('db.ppl')))
+    set_value(get_const('db.ppl'), str(len(today_people)))
+    set_value(get_const('db.yesterday_ppl'), str(previous_ppl))
 
     # get server and send statistics message
     text_channel = bot.get_channel(get_const('channel.general'))
@@ -556,6 +560,24 @@ async def today(ctx: Interaction):
 async def money(ctx: Interaction):
     having = get_money(ctx.user.id)
     await ctx.response.send_message(f'{ctx.user.mention}의 소지금은 __{having / 100:,.2f}__ Ł입니다.', ephemeral=True)
+
+
+@bot.tree.command(description='로판파샤스의 금일 PPL 지수를 확인합니다.')
+async def ppl(ctx: Interaction):
+    # fetch ppl index from database
+    ppl_index = int(get_value(get_const('db.ppl')))
+    yesterday_ppl = int(get_value(get_const('db.yesterday_ppl')))
+
+    # calculate multiplier
+    try:
+        multiplier = ppl_index / yesterday_ppl
+    except ZeroDivisionError:
+        multiplier = inf
+    up_down = '상승 ▲' if multiplier > 100 else '하락 ▼'
+
+    await ctx.response.send_message(f'로판파샤스의 금일 PPL 지수는 __**{ppl_index}**__입니다.\n'
+                                    f'작일 PPL 지수는 __{yesterday_ppl}__이고, '
+                                    f'오늘은 어제에 비해 __**{multiplier * 100:.2f}%로 {up_down}**__했습니다.')
 
 
 if __name__ == '__main__':
