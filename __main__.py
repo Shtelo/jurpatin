@@ -75,7 +75,7 @@ async def generate_today_statistics() -> str:
 
 @tasks.loop(minutes=1)
 async def today_statistics():
-    global today_messages, today_messages_length, today_calls, today_people
+    global today_messages, today_messages_length, today_calls, today_people, today_call_duration
     global last_record
 
     # check new day
@@ -94,6 +94,7 @@ async def today_statistics():
     today_messages = 0
     today_messages_length = 0
     today_calls = 0
+    today_call_duration = timedelta()
     today_people.clear()
 
 
