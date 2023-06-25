@@ -585,7 +585,7 @@ async def inventory(ctx: Interaction):
 
 
 @bot.tree.command(description='로판파샤스의 금일 PPL 지수를 확인합니다.')
-async def ppl(ctx: Interaction):
+async def ppl(ctx: Interaction, ephemeral: bool = True):
     # fetch ppl index from database
     ppl_index = int(get_value(get_const('db.ppl')))
     yesterday_ppl = int(get_value(get_const('db.yesterday_ppl')))
@@ -612,7 +612,7 @@ async def ppl(ctx: Interaction):
         f'작일 PPL 지수는 __{yesterday_ppl}__이고, '
         f'오늘은 어제에 비해 __**{multiplier * 100:.2f}%로 {up_down}**__했습니다.\n'
         f'__{ctx.user}__님은 __**{having:,}개**__의 PPL 상품을 가지고 있고, 총 __{having_price / 100:,.2f} Ł__입니다.',
-        ephemeral=True)
+        ephemeral=ephemeral)
 
 
 @bot.tree.command(description='PPL 상품을 구매합니다.')
