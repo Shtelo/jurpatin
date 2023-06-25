@@ -38,7 +38,9 @@ def set_money(user_id: int, money: int) -> None:
 
 def add_money(user_id: int, money: int) -> None:
     with database.cursor() as cursor:
-        cursor.execute('UPDATE money SET money = money + %s WHERE id = %s', (money, user_id))
+        cursor.execute('INSERT INTO money (id, money) VALUES (%s, %s) '
+                       'ON DUPLICATE KEY UPDATE money = money + %s',
+                       (user_id, money, money))
         database.commit()
 
 

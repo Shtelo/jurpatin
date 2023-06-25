@@ -27,6 +27,7 @@ bot = Bot(when_mentioned, intents=intents)
 async def on_ready():
     await bot.tree.sync()
     today_statistics.start()
+    give_money_if_call.start()
     print('Ürpatin is running.')
 
 
@@ -99,12 +100,27 @@ async def today_statistics():
     today_people.clear()
 
 
-message_logs: dict[int, int] = dict()
+voice_people = set()
+
+
+@tasks.loop(minutes=2)
+async def give_money_if_call():
+    for member_id in voice_people:
+        add_money(member_id, 1)
 
 
 @bot.event
 async def on_voice_state_update(member: Member, before: VoiceState, after: VoiceState):
     await voice_channel_notification(member, before, after)
+
+    # track whether member is in voice channel
+    if after is None:
+        voice_people.remove(member.id)
+    if before is None:
+        voice_people.add(member.id)
+
+
+message_logs: dict[int, int] = dict()
 
 
 async def voice_channel_notification(member: Member, before: VoiceState, after: VoiceState):
