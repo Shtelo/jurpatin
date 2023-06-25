@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple, Any
 
 from pymysql import connect
 
@@ -62,4 +62,27 @@ def get_value(key: str) -> Optional[str]:
 def remove_value(key: str) -> None:
     with database.cursor() as cursor:
         cursor.execute('DELETE FROM `values` WHERE `key` = %s', (key,))
+        database.commit()
+
+
+def get_inventory(user_id: int) -> tuple[tuple[Any, ...], ...]:
+    with database.cursor() as cursor:
+        cursor.execute('SELECT name, amount FROM inventory WHERE id = %s', (user_id,))
+        return cursor.fetchall()
+
+
+def set_inventory(user_id: int, name: str, amount: int) -> None:
+    with database.cursor() as cursor:
+        if amount:
+            cursor.execute('INSERT INTO inventory (id, name, amount) VALUES (%s, %s, %s) '
+                           'ON DUPLICATE KEY UPDATE amount = %s', (user_id, name, amount, amount))
+        else:
+            cursor.execute('DELETE FROM inventory WHERE id = %s AND name = %s', (user_id, name))
+        database.commit()
+
+
+def add_inventory(user_id: int, name: str, amount: int) -> None:
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO inventory (id, name, amount) VALUES (%s, %s, %s) '
+                       'ON DUPLICATE KEY UPDATE amount = amount + %s', (user_id, name, amount, amount))
         database.commit()
