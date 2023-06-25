@@ -22,7 +22,8 @@
   },
   "color": {
     "lecture": 3132529,
-    "study": 15449146
+    "study": 15449146,
+    "lofanfashasch": 16637529
   },
   "emoji": {
     "o": "⭕",
@@ -31,6 +32,6 @@
   "db": {
     "ppl": "yesterday_active_people",
     "yesterday_ppl": "yesterday_ppl",
-    "ppl_having": "ppl_having"
+    "ppl_having": "PPL 상품"
   }
 }

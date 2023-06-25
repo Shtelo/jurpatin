@@ -6,7 +6,7 @@ from sys import argv
 from typing import Tuple, List, Optional
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
-    VoiceChannel, NotFound, RawReactionActionEvent
+    VoiceChannel, NotFound, RawReactionActionEvent, Embed
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext import tasks
@@ -560,6 +560,27 @@ async def today(ctx: Interaction):
 async def money(ctx: Interaction):
     having = get_money(ctx.user.id)
     await ctx.response.send_message(f'{ctx.user.mention}의 소지금은 __{having / 100:,.2f}__ Ł입니다.', ephemeral=True)
+
+
+@bot.tree.command(description='소지품을 확인합니다.')
+async def inventory(ctx: Interaction):
+    having = get_inventory(ctx.user.id)
+
+    # if inventory is empty
+    if len(having) <= 0:
+        await ctx.response.send_message(f'소지품이 없습니다.', ephemeral=True)
+        return
+
+    # if not empty
+    embed = Embed(
+        colour=get_const('color.lofanfashasch'), title=f'__{ctx.user}__의 소지품',
+        description='소지품을 확인합니다.')
+    embed.set_thumbnail(url=ctx.user.avatar)
+
+    for key, value in having.items():
+        embed.add_field(name=key, value=f'{value}개', inline=True)
+
+    await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
 @bot.tree.command(description='로판파샤스의 금일 PPL 지수를 확인합니다.')
