@@ -190,7 +190,7 @@ async def on_message(message: InteractionMessage):
 
     # give money by message content
     if message.guild.id == lofanfashasch_id:
-        add_money(message.author.id, len(set(message.content)))
+        add_money(message.author.id, len(set(message.content)) // 10)
 
 
 @bot.event
