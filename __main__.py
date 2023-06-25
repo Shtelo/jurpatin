@@ -6,7 +6,7 @@ from sys import argv
 from typing import Tuple, List, Optional
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
-    VoiceChannel, NotFound, RawReactionActionEvent
+    VoiceChannel, NotFound, RawReactionActionEvent, Embed
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext import tasks
@@ -14,6 +14,7 @@ from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
 from util import get_secret, get_const, eul_reul
+from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory
 
 intents = Intents.default()
 intents.members = True
@@ -26,6 +27,7 @@ bot = Bot(when_mentioned, intents=intents)
 async def on_ready():
     await bot.tree.sync()
     today_statistics.start()
+    give_money_if_call.start()
     print('Ürpatin is running.')
 
 
@@ -69,7 +71,6 @@ async def generate_today_statistics() -> str:
     return f'* `{today_messages}`개의 메시지가 전송되었습니다. (총 길이: `{today_messages_length}`문자)\n' \
            f'* 음성 채널이 `{today_calls}`번 활성화되었습니다.\n' \
            f'  * 총 통화 길이는 `{call_duration}`입니다.\n' \
-           f'* `{len(today_people)}`명의 사람이 서버에서 상호작용했습니다.\n' \
            f'* 총 `{today_reactions}`개의 반응이 추가되었습니다.'
 
 
@@ -85,6 +86,11 @@ async def today_statistics():
     if previous.day == last_record.day:
         return
 
+    # record ppl on database
+    previous_ppl = int(get_value(get_const('db.ppl')))
+    set_value(get_const('db.ppl'), str(len(today_people)))
+    set_value(get_const('db.yesterday_ppl'), str(previous_ppl))
+
     # get server and send statistics message
     text_channel = bot.get_channel(get_const('channel.general'))
 
@@ -98,12 +104,28 @@ async def today_statistics():
     today_people.clear()
 
 
-message_logs: dict[int, int] = dict()
+voice_people = set()
+
+
+@tasks.loop(minutes=1)
+async def give_money_if_call():
+    for member_id in voice_people:
+        # 지급 기준 변경 시 readme.md 수정 필요
+        add_money(member_id, 5)
 
 
 @bot.event
 async def on_voice_state_update(member: Member, before: VoiceState, after: VoiceState):
     await voice_channel_notification(member, before, after)
+
+    # track whether member is in voice channel
+    if after is None:
+        voice_people.remove(member.id)
+    if before is None:
+        voice_people.add(member.id)
+
+
+message_logs: dict[int, int] = dict()
 
 
 async def voice_channel_notification(member: Member, before: VoiceState, after: VoiceState):
@@ -160,12 +182,22 @@ async def voice_channel_notification(member: Member, before: VoiceState, after: 
 async def on_message(message: InteractionMessage):
     global today_messages, today_messages_length
 
+    lofanfashasch_id = get_const('guild.lofanfashasch')
+
     # record today statistics
     try:
-        if message.guild.id == get_const('guild.lofanfashasch'):
+        if message.guild.id == lofanfashasch_id:
             today_messages += 1
             today_messages_length += len(message.content)
             today_people.add(message.author.id)
+    except AttributeError:
+        pass
+
+    # give money by message content
+    try:
+        if message.guild.id == lofanfashasch_id and (amount := len(set(message.content))):
+            # 지급 기준 변경 시 readme.md 수정 필요
+            add_money(message.author.id, amount)
     except AttributeError:
         pass
 
@@ -521,8 +553,141 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
 async def today(ctx: Interaction):
     now = datetime.now(timezone.utc)
 
-    await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}',
-                                    ephemeral=True)
+    await ctx.response.send_message(
+        f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}', ephemeral=True)
+
+
+@bot.tree.command(description='소지금을 확인합니다.')
+async def money(ctx: Interaction):
+    having = get_money(ctx.user.id)
+    await ctx.response.send_message(f'{ctx.user.mention}의 소지금은 __**{having / 100:,.2f}**__ Ł입니다.', ephemeral=True)
+
+
+@bot.tree.command(description='소지품을 확인합니다.')
+async def inventory(ctx: Interaction):
+    having = get_inventory(ctx.user.id)
+
+    # if inventory is empty
+    if len(having) <= 0:
+        await ctx.response.send_message(f'소지품이 없습니다.', ephemeral=True)
+        return
+
+    # if not empty
+    embed = Embed(
+        colour=get_const('color.lofanfashasch'), title=f'__{ctx.user}__의 소지품',
+        description='소지품을 확인합니다.')
+    embed.set_thumbnail(url=ctx.user.avatar)
+
+    for key, value in having.items():
+        embed.add_field(name=key, value=f'{value}개', inline=True)
+
+    await ctx.response.send_message(embed=embed, ephemeral=True)
+
+
+@bot.tree.command(description='로판파샤스의 금일 PPL 지수를 확인합니다.')
+async def ppl(ctx: Interaction, ephemeral: bool = True):
+    # fetch ppl index from database
+    ppl_index = int(get_value(get_const('db.ppl')))
+    yesterday_ppl = int(get_value(get_const('db.yesterday_ppl')))
+
+    # calculate multiplier
+    try:
+        multiplier = ppl_index / yesterday_ppl
+    except ZeroDivisionError:
+        multiplier = inf
+
+    # calculate price of having ppl's
+    having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+    having_price = having * ppl_index * 100
+
+    if multiplier > 1:
+        up_down = '상승 ▲'
+    elif multiplier < 1:
+        up_down = '하락 ▼'
+    else:
+        up_down = '유지'
+
+    await ctx.response.send_message(
+        f'로판파샤스의 금일 PPL 지수는 __**{ppl_index}**__입니다.\n'
+        f'작일 PPL 지수는 __{yesterday_ppl}__이고, '
+        f'오늘은 어제에 비해 __**{multiplier * 100:.2f}%로 {up_down}**__했습니다.\n'
+        f'__{ctx.user}__님은 __**{having:,}개**__의 PPL 상품을 가지고 있고, 총 __{having_price / 100:,.2f} Ł__입니다.',
+        ephemeral=ephemeral)
+
+
+@bot.tree.command(description='PPL 상품을 구매합니다.')
+async def buy_ppl(ctx: Interaction, amount: int = 1):
+    if amount < 1:
+        await ctx.response.send_message(f':x: 구매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
+        return
+
+    # fetch ppl index from database
+    ppl_index = int(get_value(get_const('db.ppl')))
+    price = amount * ppl_index * 100
+
+    if ppl_index <= 0:
+        await ctx.response.send_message(
+            f':x: PPL 지수가 0 이하일 때에는 상품을 구매할 수 없습니다.', ephemeral=True)
+        return
+
+    # check if user has enough money
+    having = get_money(ctx.user.id)
+    if having < price:
+        await ctx.response.send_message(
+            f':x: 소지금이 부족합니다. '
+            f'(소지금: __**{having / 100:,.2f} Ł**__, '
+            f'가격: __{amount:,}개 \* {ppl_index:,} Ł = **{price / 100:,.2f} Ł**__)',
+            ephemeral=True)
+        return
+
+    # update database
+    add_money(ctx.user.id, -price)
+    add_inventory(ctx.user.id, get_const('db.ppl_having'), amount)
+
+    now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'))
+    now_money = get_money(ctx.user.id)
+    await ctx.response.send_message(
+        f'PPL 상품 __{amount:,}__개를 구매했습니다. '
+        f'현재 상품 당 PPL 가치는 __{ppl_index:,} Ł__이며, 총 __{now_having:,}__개를 소지하고 있습니다.\n'
+        f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
+
+
+@bot.tree.command(description='PPL 상품을 판매합니다.')
+async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
+    if amount < 1:
+        await ctx.response.send_message(f':x: 판매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
+        return
+
+    # fetch ppl index from database
+    ppl_index = int(get_value(get_const('db.ppl')))
+    price = amount * ppl_index * 100
+
+    # handle ppl_index == 0
+    if ppl_index <= 0 and not force:
+        await ctx.response.send_message(
+            f':x: 현재 PPL 지수가 0 이하입니다. '
+            f'그래도 판매하시려면 `force` 값을 `True`로 설정해주시기 바랍니다.', ephemeral=True)
+        return
+
+    # check if user has enough ppl
+    having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+    if_all = ''
+    if having < amount:
+        if_all = f'현재 소지하고 있는 PPL 상품은 총 __{having}__개입니다. 상품을 모두 판매합니다.\n'
+        amount = having
+        price = amount * ppl_index * 100
+
+    # update database
+    add_money(ctx.user.id, price)
+    set_inventory(ctx.user.id, get_const('db.ppl_having'), having - amount)
+
+    now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+    now_money = get_money(ctx.user.id)
+    await ctx.response.send_message(
+        f'{if_all}'
+        f'PPL 상품 __{amount:,}__개를 판매하여 __**{price / 100:,.2f} Ł**__를 벌었습니다. '
+        f'현재 PPL 지수는 __{ppl_index:,}__이며, PPL 상품을 __{now_having:,}__개를 소지하고 있습니다.\n'
+        f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
 
 
 if __name__ == '__main__':
