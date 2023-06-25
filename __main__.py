@@ -553,13 +553,14 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
 async def today(ctx: Interaction):
     now = datetime.now(timezone.utc)
 
-    await ctx.response.send_message(f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}', ephemeral=True)
+    await ctx.response.send_message(
+        f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}', ephemeral=True)
 
 
 @bot.tree.command(description='소지금을 확인합니다.')
 async def money(ctx: Interaction):
     having = get_money(ctx.user.id)
-    await ctx.response.send_message(f'{ctx.user.mention}의 소지금은 __{having / 100:,.2f}__ Ł입니다.', ephemeral=True)
+    await ctx.response.send_message(f'{ctx.user.mention}의 소지금은 __**{having / 100:,.2f}**__ Ł입니다.', ephemeral=True)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
@@ -594,17 +595,24 @@ async def ppl(ctx: Interaction):
         multiplier = ppl_index / yesterday_ppl
     except ZeroDivisionError:
         multiplier = inf
-    up_down = '상승 ▲' if multiplier > 100 else '하락 ▼'
 
     # calculate price of having ppl's
     having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
-    having_price = having * ppl_index
+    having_price = having * ppl_index * 100
+
+    if multiplier > 1:
+        up_down = '상승 ▲'
+    elif multiplier < 1:
+        up_down = '하락 ▼'
+    else:
+        up_down = '유지'
 
     await ctx.response.send_message(
         f'로판파샤스의 금일 PPL 지수는 __**{ppl_index}**__입니다.\n'
         f'작일 PPL 지수는 __{yesterday_ppl}__이고, '
         f'오늘은 어제에 비해 __**{multiplier * 100:.2f}%로 {up_down}**__했습니다.\n'
-        f'__{ctx.user}__님은 __**{having:,}개**__의 PPL 상품을 가지고 있고, 총 __{having_price / 100:,.2f} Ł__입니다.')
+        f'__{ctx.user}__님은 __**{having:,}개**__의 PPL 상품을 가지고 있고, 총 __{having_price / 100:,.2f} Ł__입니다.',
+        ephemeral=True)
 
 
 @bot.tree.command(description='PPL 상품을 구매합니다.')
@@ -615,7 +623,7 @@ async def buy_ppl(ctx: Interaction, amount: int = 1):
 
     # fetch ppl index from database
     ppl_index = int(get_value(get_const('db.ppl')))
-    price = amount * ppl_index
+    price = amount * ppl_index * 100
 
     if ppl_index <= 0:
         await ctx.response.send_message(
@@ -628,7 +636,7 @@ async def buy_ppl(ctx: Interaction, amount: int = 1):
         await ctx.response.send_message(
             f':x: 소지금이 부족합니다. '
             f'(소지금: __**{having / 100:,.2f} Ł**__, '
-            f'가격: __{amount:,} \* {ppl_index:,} Ł = **{price:,.2f} Ł**__)',
+            f'가격: __{amount:,}개 \* {ppl_index:,} Ł = **{price / 100:,.2f} Ł**__)',
             ephemeral=True)
         return
 
@@ -637,9 +645,11 @@ async def buy_ppl(ctx: Interaction, amount: int = 1):
     add_inventory(ctx.user.id, get_const('db.ppl_having'), amount)
 
     now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'))
+    now_money = get_money(ctx.user.id)
     await ctx.response.send_message(
         f'PPL 상품 __{amount:,}__개를 구매했습니다. '
-        f'현재 상품 당 PPL 가치는 __{ppl_index:,} Ł__이며, 총 __{now_having:,}__개를 소지하고 있습니다.')
+        f'현재 상품 당 PPL 가치는 __{ppl_index:,} Ł__이며, 총 __{now_having:,}__개를 소지하고 있습니다.\n'
+        f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
 
 
 @bot.tree.command(description='PPL 상품을 판매합니다.')
@@ -650,7 +660,7 @@ async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
 
     # fetch ppl index from database
     ppl_index = int(get_value(get_const('db.ppl')))
-    price = amount * ppl_index
+    price = amount * ppl_index * 100
 
     # handle ppl_index == 0
     if ppl_index <= 0 and not force:
@@ -665,16 +675,19 @@ async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
     if having < amount:
         if_all = f'현재 소지하고 있는 PPL 상품은 총 __{having}__개입니다. 상품을 모두 판매합니다.\n'
         amount = having
+        price = amount * ppl_index * 100
 
     # update database
     add_money(ctx.user.id, price)
     set_inventory(ctx.user.id, get_const('db.ppl_having'), having - amount)
 
     now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+    now_money = get_money(ctx.user.id)
     await ctx.response.send_message(
         f'{if_all}'
-        f'PPL 상품 __{amount:,}__개를 판매하여 __**{price:,.2f} Ł**__를 벌었습니다. '
-        f'PPL 상품의 현재 가치는 __{ppl_index:,} Ł__이며, 총 __{now_having:,}__개를 소지하고 있습니다.')
+        f'PPL 상품 __{amount:,}__개를 판매하여 __**{price / 100:,.2f} Ł**__를 벌었습니다. '
+        f'현재 PPL 지수는 __{ppl_index:,}__이며, PPL 상품을 __{now_having:,}__개를 소지하고 있습니다.\n'
+        f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
 
 
 if __name__ == '__main__':
