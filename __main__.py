@@ -106,6 +106,7 @@ voice_people = set()
 @tasks.loop(minutes=1)
 async def give_money_if_call():
     for member_id in voice_people:
+        # 지급 기준 변경 시 readme.md 수정 필요
         add_money(member_id, 5)
 
 
@@ -191,6 +192,7 @@ async def on_message(message: InteractionMessage):
     # give money by message content
     try:
         if message.guild.id == lofanfashasch_id and (amount := len(set(message.content))):
+            # 지급 기준 변경 시 readme.md 수정 필요
             add_money(message.author.id, amount)
     except AttributeError:
         pass
