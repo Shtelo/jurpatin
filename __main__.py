@@ -189,8 +189,11 @@ async def on_message(message: InteractionMessage):
         pass
 
     # give money by message content
-    if message.guild.id == lofanfashasch_id:
-        add_money(message.author.id, len(set(message.content)) // 10)
+    try:
+        if message.guild.id == lofanfashasch_id:
+            add_money(message.author.id, len(set(message.content)) // 10)
+    except AttributeError:
+        pass
 
 
 @bot.event
