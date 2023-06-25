@@ -690,5 +690,70 @@ async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
         f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
 
 
+bets: dict[int, dict[int, int]] = dict()
+
+
+@bot.tree.command(description='금액을 베팅합니다.')
+async def bet(ctx: Interaction, dealer: Member, amount: float):
+    # preprocess amount
+    amount = round(amount * 100)
+
+    # check if user has enough money
+    having = get_money(ctx.user.id)
+    if having < amount:
+        await ctx.response.send_message(
+            f':x: 소지금이 부족합니다. '
+            f'(소지금: __**{having / 100:,.2f} Ł**__, 베팅 금액: __{amount / 100:,.2f} Ł__)',
+            ephemeral=True)
+        return
+
+    # update database
+    add_money(ctx.user.id, -amount)
+    if dealer.id not in bets:
+        bets[dealer.id] = dict()
+    if ctx.user.id not in bets[dealer.id]:
+        bets[dealer.id][ctx.user.id] = amount
+    else:
+        bets[dealer.id][ctx.user.id] += amount
+
+    # make embed for checking betting information
+    my_total_bet = bets[dealer.id][ctx.user.id]
+    total_bet = sum(bets[dealer.id].values())
+    max_bet = max(bets[dealer.id].values())
+
+    embed = Embed(
+        title=f'__{dealer}__ 딜러 베팅 정보',
+        description=f'최고 베팅 금액: __**{max_bet / 100:,.2f} Ł**__',
+        colour=get_const('color.lofanfashasch'))
+    for better_id, bet_ in bets[dealer.id].items():
+        better = ctx.guild.get_member(better_id)
+        embed.add_field(
+            name=f'__{better}__' if better.id == ctx.user.id else str(better),
+            value=f'**{bet_ / 100:,.2f} Ł** (M{(bet_ - max_bet) / 100:+,.2f} Ł)',
+            inline=False)
+    embed.set_footer(text=f'총 베팅 금액: {total_bet / 100:,.2f} Ł')
+
+    await ctx.response.send_message(
+        f'{dealer.mention}을 딜러로 하여 __**{amount / 100:,.2f} Ł**__을 베팅했습니다.\n'
+        f'현재 __{ctx.user}__님이 베팅한 금액은 총 __**{my_total_bet / 100:,.2f} Ł**__이며, '
+        f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
+
+
+@bot.tree.command(description='베팅된 금액을 모두 회수하여 제공합니다.')
+async def unroll(ctx: Interaction, to: Member):
+    if ctx.user.id not in bets:
+        await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
+        return
+
+    total_bet = sum(bets[ctx.user.id].values())
+
+    # update database
+    add_money(to.id, total_bet)
+    bets.pop(ctx.user.id)
+
+    await ctx.response.send_message(
+        f'__{ctx.user}__ 딜러 베팅 금액 __**{total_bet / 100:,.2f} Ł**__을 {to.mention}님에게 제공하였습니다.')
+
+
 if __name__ == '__main__':
     bot.run(get_secret('test_bot_token' if '-t' in argv else 'bot_token'))
