@@ -103,10 +103,10 @@ async def today_statistics():
 voice_people = set()
 
 
-@tasks.loop(minutes=2)
+@tasks.loop(minutes=1)
 async def give_money_if_call():
     for member_id in voice_people:
-        add_money(member_id, 1)
+        add_money(member_id, 5)
 
 
 @bot.event
@@ -190,8 +190,8 @@ async def on_message(message: InteractionMessage):
 
     # give money by message content
     try:
-        if message.guild.id == lofanfashasch_id:
-            add_money(message.author.id, len(set(message.content)) // 10)
+        if message.guild.id == lofanfashasch_id and (amount := len(set(message.content))):
+            add_money(message.author.id, amount)
     except AttributeError:
         pass
 
