@@ -596,9 +596,15 @@ async def ppl(ctx: Interaction):
         multiplier = inf
     up_down = '상승 ▲' if multiplier > 100 else '하락 ▼'
 
-    await ctx.response.send_message(f'로판파샤스의 금일 PPL 지수는 __**{ppl_index}**__입니다.\n'
-                                    f'작일 PPL 지수는 __{yesterday_ppl}__이고, '
-                                    f'오늘은 어제에 비해 __**{multiplier * 100:.2f}%로 {up_down}**__했습니다.')
+    # calculate price of having ppl's
+    having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+    having_price = having * ppl_index
+
+    await ctx.response.send_message(
+        f'로판파샤스의 금일 PPL 지수는 __**{ppl_index}**__입니다.\n'
+        f'작일 PPL 지수는 __{yesterday_ppl}__이고, '
+        f'오늘은 어제에 비해 __**{multiplier * 100:.2f}%로 {up_down}**__했습니다.\n'
+        f'__{ctx.user}__님은 __**{having:,}개**__의 PPL 상품을 가지고 있고, 총 __{having_price / 100:,.2f} Ł__입니다.')
 
 
 @bot.tree.command(description='PPL 상품을 구매합니다.')
