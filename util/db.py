@@ -30,13 +30,13 @@ def create_account(user_id: int) -> None:
         database.commit()
 
 
-def set_account(user_id: int, money: int) -> None:
+def set_money(user_id: int, money: int) -> None:
     with database.cursor() as cursor:
         cursor.execute('UPDATE money SET money = %s WHERE id = %s', (money, user_id))
         database.commit()
 
 
-def add_account(user_id: int, money: int) -> None:
+def add_money(user_id: int, money: int) -> None:
     with database.cursor() as cursor:
         cursor.execute('UPDATE money SET money = money + %s WHERE id = %s', (money, user_id))
         database.commit()

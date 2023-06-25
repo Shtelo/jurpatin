@@ -14,7 +14,7 @@ from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
 from util import get_secret, get_const, eul_reul
-from util.db import get_money
+from util.db import get_money, add_money
 
 intents = Intents.default()
 intents.members = True
@@ -161,14 +161,20 @@ async def voice_channel_notification(member: Member, before: VoiceState, after: 
 async def on_message(message: InteractionMessage):
     global today_messages, today_messages_length
 
+    lofanfashasch_id = get_const('guild.lofanfashasch')
+
     # record today statistics
     try:
-        if message.guild.id == get_const('guild.lofanfashasch'):
+        if message.guild.id == lofanfashasch_id:
             today_messages += 1
             today_messages_length += len(message.content)
             today_people.add(message.author.id)
     except AttributeError:
         pass
+
+    # give money by message content
+    if message.guild.id == lofanfashasch_id:
+        add_money(message.author.id, len(set(message.content)))
 
 
 @bot.event
