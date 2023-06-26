@@ -14,7 +14,8 @@ from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
 from util import get_secret, get_const, eul_reul
-from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory
+from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory, \
+    get_money_ranking
 
 intents = Intents.default()
 intents.members = True
@@ -119,10 +120,11 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
     await voice_channel_notification(member, before, after)
 
     # track whether member is in voice channel
-    if after.channel is None:
-        voice_people.remove(member.id)
-    if before.channel is None:
-        voice_people.add(member.id)
+    if member.guild.id == get_const('guild.lofanfashasch'):
+        if after.channel is None:
+            voice_people.remove(member.id)
+        if before.channel is None:
+            voice_people.add(member.id)
 
 
 message_logs: dict[int, int] = dict()
@@ -558,9 +560,12 @@ async def today(ctx: Interaction):
 
 
 @bot.tree.command(description='소지금을 확인합니다.')
-async def money(ctx: Interaction):
-    having = get_money(ctx.user.id)
-    await ctx.response.send_message(f'{ctx.user.mention}님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=True)
+async def money(ctx: Interaction, member: Optional[Member] = None, ephemeral: bool = True):
+    if member is None:
+        member = ctx.user
+
+    having = get_money(member.id)
+    await ctx.response.send_message(f'{member}님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
@@ -693,11 +698,28 @@ async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
 bets: dict[int, dict[int, int]] = dict()
 
 
-@bot.tree.command(description='금액을 베팅합니다.')
-async def bet(ctx: Interaction, dealer: Member, amount: float):
-    # preprocess amount
-    amount = round(amount * 100)
+def make_bet_embed(ctx: Interaction, dealer: Member) -> Embed:
+    """ make embed for checking betting information """
 
+    total_bet = sum(bets[dealer.id].values())
+    max_bet = max(bets[dealer.id].values())
+
+    embed = Embed(
+        title=f'__{dealer}__ 딜러 베팅 정보',
+        description=f'최고 베팅 금액: __**{max_bet / 100:,.2f} Ł**__',
+        colour=get_const('color.lofanfashasch'))
+    for better_id, bet_ in bets[dealer.id].items():
+        better = ctx.guild.get_member(better_id)
+        embed.add_field(
+            name=f'__{better}__' if better.id == ctx.user.id else str(better),
+            value=f'**{bet_ / 100:,.2f} Ł** (M{(bet_ - max_bet) / 100:+,.2f} Ł)',
+            inline=False)
+    embed.set_footer(text=f'총 베팅 금액: {total_bet / 100:,.2f} Ł')
+
+    return embed
+
+
+async def handle_bet(ctx: Interaction, dealer: Member, amount: int):
     # check if user has enough money
     having = get_money(ctx.user.id)
     if having < amount:
@@ -716,27 +738,32 @@ async def bet(ctx: Interaction, dealer: Member, amount: float):
     else:
         bets[dealer.id][ctx.user.id] += amount
 
-    # make embed for checking betting information
+    # make embed and send message
+    embed = make_bet_embed(ctx, dealer)
     my_total_bet = bets[dealer.id][ctx.user.id]
     total_bet = sum(bets[dealer.id].values())
-    max_bet = max(bets[dealer.id].values())
-
-    embed = Embed(
-        title=f'__{dealer}__ 딜러 베팅 정보',
-        description=f'최고 베팅 금액: __**{max_bet / 100:,.2f} Ł**__',
-        colour=get_const('color.lofanfashasch'))
-    for better_id, bet_ in bets[dealer.id].items():
-        better = ctx.guild.get_member(better_id)
-        embed.add_field(
-            name=f'__{better}__' if better.id == ctx.user.id else str(better),
-            value=f'**{bet_ / 100:,.2f} Ł** (M{(bet_ - max_bet) / 100:+,.2f} Ł)',
-            inline=False)
-    embed.set_footer(text=f'총 베팅 금액: {total_bet / 100:,.2f} Ł')
-
     await ctx.response.send_message(
         f'{dealer.mention}님을 딜러로 하여 __**{amount / 100:,.2f} Ł**__을 베팅했습니다.\n'
         f'현재 __{ctx.user}__님이 베팅한 금액은 총 __**{my_total_bet / 100:,.2f} Ł**__이며, '
-        f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
+        f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed, ephemeral=True)
+
+
+@bot.tree.command(description='금액을 베팅하거나 베팅 현황을 확인합니다.')
+async def bet(ctx: Interaction, dealer: Member, amount: float = 0.0):
+    # preprocess amount
+    amount = round(amount * 100)
+
+    # process betting
+    if amount:
+        await handle_bet(ctx, dealer, amount)
+    # process checking
+    else:
+        if dealer.id not in bets:
+            await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
+            return
+
+        embed = make_bet_embed(ctx, dealer)
+        await ctx.response.send_message(embed=embed)
 
 
 @bot.tree.command(description='베팅된 금액을 모두 회수하여 제공합니다.')
@@ -780,6 +807,21 @@ async def transfer(ctx: Interaction, amount: float, to: Member):
 
     await ctx.response.send_message(
         f'{ctx.user.mention}님이 {to.mention}님에게 __**{amount / 100:,.2f} Ł**__를 송금하였습니다.')
+
+
+@bot.tree.command(description='돈 소지 현황을 확인합니다.')
+async def rank(ctx: Interaction):
+    ranking = get_money_ranking()
+
+    strings = list()
+    for user_id, money_, _ in ranking:
+        member = ctx.guild.get_member(user_id)
+        if member is None:
+            member = f'||{user_id}||'
+        strings.append(f'1. __{member}__: __**{money_ / 100:,.2f} Ł**__')
+
+    message = '\n'.join(strings)
+    await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}')
 
 
 if __name__ == '__main__':

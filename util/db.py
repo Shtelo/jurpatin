@@ -44,6 +44,12 @@ def add_money(user_id: int, money: int) -> None:
         database.commit()
 
 
+def get_money_ranking(limit: int = 10) -> list[tuple[int, int, int]]:
+    with database.cursor() as cursor:
+        cursor.execute('SELECT id, money, rank() OVER (ORDER BY money DESC) FROM money LIMIT %s', (limit,))
+        return cursor.fetchall()
+
+
 def set_value(key: str, value: str) -> None:
     with database.cursor() as cursor:
         cursor.execute('INSERT INTO `values` (`key`, value) VALUES (%s, %s)', (key, value))
@@ -89,3 +95,8 @@ def add_inventory(user_id: int, name: str, amount: int) -> None:
         cursor.execute('INSERT INTO inventory (id, name, amount) VALUES (%s, %s, %s) '
                        'ON DUPLICATE KEY UPDATE amount = amount + %s', (user_id, name, amount, amount))
         database.commit()
+
+
+if __name__ == '__main__':
+    from pprint import pprint
+    pprint(get_money_ranking())
