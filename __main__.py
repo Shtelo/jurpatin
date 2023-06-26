@@ -565,7 +565,7 @@ async def money(ctx: Interaction, member: Optional[Member] = None, ephemeral: bo
         member = ctx.user
 
     having = get_money(member.id)
-    await ctx.response.send_message(f'{member}님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
+    await ctx.response.send_message(f'__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
