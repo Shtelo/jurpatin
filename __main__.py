@@ -755,5 +755,32 @@ async def unroll(ctx: Interaction, to: Member):
         f'__{ctx.user}__ 딜러 베팅 금액 __**{total_bet / 100:,.2f} Ł**__을 {to.mention}님에게 제공하였습니다.')
 
 
+@bot.tree.command(description='돈을 송금합니다.')
+async def transfer(ctx: Interaction, amount: float, to: Member):
+    # preprocessing
+    amount = round(amount * 100)
+
+    # check if amount is valid
+    if amount <= 0:
+        await ctx.response.send_message(':x: 송금할 금액은 0을 초과해야 합니다.', ephemeral=True)
+        return
+
+    # check if user has enough money
+    having = get_money(ctx.user.id)
+    if having < amount:
+        await ctx.response.send_message(
+            f':x: 소지금이 부족합니다. '
+            f'(소지금: __**{having / 100:,.2f} Ł**__, 송금 금액: __{amount / 100:,.2f} Ł__)',
+            ephemeral=True)
+        return
+
+    # update database
+    add_money(ctx.user.id, -amount)
+    add_money(to.id, amount)
+
+    await ctx.response.send_message(
+        f'{ctx.user.mention}님이 {to.mention}님에게 __**{amount / 100:,.2f} Ł**__를 송금하였습니다.')
+
+
 if __name__ == '__main__':
     bot.run(get_secret('test_bot_token' if '-t' in argv else 'bot_token'))
