@@ -119,9 +119,9 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
     await voice_channel_notification(member, before, after)
 
     # track whether member is in voice channel
-    if after is None:
+    if after.channel is None:
         voice_people.remove(member.id)
-    if before is None:
+    if before.channel is None:
         voice_people.add(member.id)
 
 
