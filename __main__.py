@@ -696,11 +696,28 @@ async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
 bets: dict[int, dict[int, int]] = dict()
 
 
-@bot.tree.command(description='금액을 베팅합니다.')
-async def bet(ctx: Interaction, dealer: Member, amount: float):
-    # preprocess amount
-    amount = round(amount * 100)
+def make_bet_embed(ctx: Interaction, dealer: Member) -> Embed:
+    """ make embed for checking betting information """
 
+    total_bet = sum(bets[dealer.id].values())
+    max_bet = max(bets[dealer.id].values())
+
+    embed = Embed(
+        title=f'__{dealer}__ 딜러 베팅 정보',
+        description=f'최고 베팅 금액: __**{max_bet / 100:,.2f} Ł**__',
+        colour=get_const('color.lofanfashasch'))
+    for better_id, bet_ in bets[dealer.id].items():
+        better = ctx.guild.get_member(better_id)
+        embed.add_field(
+            name=f'__{better}__' if better.id == ctx.user.id else str(better),
+            value=f'**{bet_ / 100:,.2f} Ł** (M{(bet_ - max_bet) / 100:+,.2f} Ł)',
+            inline=False)
+    embed.set_footer(text=f'총 베팅 금액: {total_bet / 100:,.2f} Ł')
+
+    return embed
+
+
+async def handle_bet(ctx: Interaction, dealer: Member, amount: int):
     # check if user has enough money
     having = get_money(ctx.user.id)
     if having < amount:
@@ -719,27 +736,32 @@ async def bet(ctx: Interaction, dealer: Member, amount: float):
     else:
         bets[dealer.id][ctx.user.id] += amount
 
-    # make embed for checking betting information
+    # make embed and send message
+    embed = make_bet_embed(ctx, dealer)
     my_total_bet = bets[dealer.id][ctx.user.id]
     total_bet = sum(bets[dealer.id].values())
-    max_bet = max(bets[dealer.id].values())
-
-    embed = Embed(
-        title=f'__{dealer}__ 딜러 베팅 정보',
-        description=f'최고 베팅 금액: __**{max_bet / 100:,.2f} Ł**__',
-        colour=get_const('color.lofanfashasch'))
-    for better_id, bet_ in bets[dealer.id].items():
-        better = ctx.guild.get_member(better_id)
-        embed.add_field(
-            name=f'__{better}__' if better.id == ctx.user.id else str(better),
-            value=f'**{bet_ / 100:,.2f} Ł** (M{(bet_ - max_bet) / 100:+,.2f} Ł)',
-            inline=False)
-    embed.set_footer(text=f'총 베팅 금액: {total_bet / 100:,.2f} Ł')
-
     await ctx.response.send_message(
         f'{dealer.mention}님을 딜러로 하여 __**{amount / 100:,.2f} Ł**__을 베팅했습니다.\n'
         f'현재 __{ctx.user}__님이 베팅한 금액은 총 __**{my_total_bet / 100:,.2f} Ł**__이며, '
-        f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
+        f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed, ephemeral=True)
+
+
+@bot.tree.command(description='금액을 베팅하거나 베팅 현황을 확인합니다.')
+async def bet(ctx: Interaction, dealer: Member, amount: float = 0.0):
+    # preprocess amount
+    amount = round(amount * 100)
+
+    # process betting
+    if amount:
+        await handle_bet(ctx, dealer, amount)
+    # process checking
+    else:
+        if dealer.id not in bets:
+            await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
+            return
+
+        embed = make_bet_embed(ctx, dealer)
+        await ctx.response.send_message(embed=embed)
 
 
 @bot.tree.command(description='베팅된 금액을 모두 회수하여 제공합니다.')
