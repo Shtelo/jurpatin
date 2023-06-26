@@ -560,7 +560,7 @@ async def today(ctx: Interaction):
 @bot.tree.command(description='소지금을 확인합니다.')
 async def money(ctx: Interaction):
     having = get_money(ctx.user.id)
-    await ctx.response.send_message(f'{ctx.user.mention}의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=True)
+    await ctx.response.send_message(f'{ctx.user.mention}님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=True)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
@@ -734,7 +734,7 @@ async def bet(ctx: Interaction, dealer: Member, amount: float):
     embed.set_footer(text=f'총 베팅 금액: {total_bet / 100:,.2f} Ł')
 
     await ctx.response.send_message(
-        f'{dealer.mention}을 딜러로 하여 __**{amount / 100:,.2f} Ł**__을 베팅했습니다.\n'
+        f'{dealer.mention}님을 딜러로 하여 __**{amount / 100:,.2f} Ł**__을 베팅했습니다.\n'
         f'현재 __{ctx.user}__님이 베팅한 금액은 총 __**{my_total_bet / 100:,.2f} Ł**__이며, '
         f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
 
