@@ -14,7 +14,8 @@ from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
 from util import get_secret, get_const, eul_reul
-from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory
+from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory, \
+    get_money_ranking
 
 intents = Intents.default()
 intents.members = True
@@ -805,6 +806,21 @@ async def transfer(ctx: Interaction, amount: float, to: Member):
 
     await ctx.response.send_message(
         f'{ctx.user.mention}님이 {to.mention}님에게 __**{amount / 100:,.2f} Ł**__를 송금하였습니다.')
+
+
+@bot.tree.command(description='돈 소지 현황을 확인합니다.')
+async def rank(ctx: Interaction):
+    ranking = get_money_ranking()
+
+    strings = list()
+    for user_id, money_, _ in ranking:
+        member = ctx.guild.get_member(user_id)
+        if member is None:
+            member = f'||{user_id}||'
+        strings.append(f'1. __{member}__: __**{money_ / 100:,.2f} Ł**__')
+
+    message = '\n'.join(strings)
+    await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}')
 
 
 if __name__ == '__main__':
