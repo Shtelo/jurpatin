@@ -558,9 +558,12 @@ async def today(ctx: Interaction):
 
 
 @bot.tree.command(description='소지금을 확인합니다.')
-async def money(ctx: Interaction):
-    having = get_money(ctx.user.id)
-    await ctx.response.send_message(f'{ctx.user.mention}님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=True)
+async def money(ctx: Interaction, member: Optional[Member] = None, ephemeral: bool = True):
+    if member is None:
+        member = ctx.user
+
+    having = get_money(member.id)
+    await ctx.response.send_message(f'{member}님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
