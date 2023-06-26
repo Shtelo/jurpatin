@@ -565,7 +565,7 @@ async def money(ctx: Interaction, member: Optional[Member] = None, ephemeral: bo
         member = ctx.user
 
     having = get_money(member.id)
-    await ctx.response.send_message(f'{member}님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
+    await ctx.response.send_message(f'__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
@@ -816,9 +816,18 @@ async def rank(ctx: Interaction):
     strings = list()
     for user_id, money_, _ in ranking:
         member = ctx.guild.get_member(user_id)
+
+        # skip the bot
+        if member is not None and member.bot:
+            continue
+
+        # handle member is None
         if member is None:
-            member = f'||{user_id}||'
-        strings.append(f'1. __{member}__: __**{money_ / 100:,.2f} Ł**__')
+            member_string = f'||{user_id}||'
+        else:
+            member_string = str(member)
+
+        strings.append(f'1. __{member_string}__: __**{money_ / 100:,.2f} Ł**__')
 
     message = '\n'.join(strings)
     await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}')
