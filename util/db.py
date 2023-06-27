@@ -26,7 +26,6 @@ def get_connection():
             password=get_secret('database.password'),
             database=get_secret('database.database'),
         )
-        print("NEW")
         _get_connection_last_used = now
 
     return _get_connection_cache
