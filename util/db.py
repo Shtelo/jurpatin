@@ -26,7 +26,6 @@ def get_connection():
             password=get_secret('database.password'),
             database=get_secret('database.database'),
         )
-        print("NEW")
         _get_connection_last_used = now
 
     return _get_connection_cache
@@ -75,10 +74,11 @@ def get_money_ranking(limit: int = 10) -> tuple[tuple[Any, ...], ...]:
         return cursor.fetchall()
 
 
-def set_value(key: str, value: str) -> None:
+def set_value(key: str, value) -> None:
     database = get_connection()
     with database.cursor() as cursor:
-        cursor.execute('INSERT INTO `values` (`key`, value) VALUES (%s, %s)', (key, value))
+        cursor.execute('INSERT INTO `values` (`key`, value) VALUES (%s, %s) '
+                       'ON DUPLICATE KEY UPDATE value = %s', (key, value, value))
         database.commit()
 
 
@@ -126,3 +126,8 @@ def add_inventory(user_id: int, name: str, amount: int) -> None:
         cursor.execute('INSERT INTO inventory (id, name, amount) VALUES (%s, %s, %s) '
                        'ON DUPLICATE KEY UPDATE amount = amount + %s', (user_id, name, amount, amount))
         database.commit()
+
+
+if __name__ == '__main__':
+    from datetime import timedelta
+    set_value('test', timedelta(seconds=1239487))

@@ -13,7 +13,7 @@ from discord.ext import tasks
 from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
-from util import get_secret, get_const, eul_reul
+from util import get_secret, get_const, eul_reul, parse_datetime, parse_timedelta
 from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory, \
     get_money_ranking
 
@@ -44,20 +44,14 @@ async def on_member_join(member: Member):
     await assign_role(member, nick[0], member.guild)
 
 
-today_messages = 0
-today_messages_length = 0
-today_calls = 0
-today_reactions = 0
 today_people = set()
-today_call_duration = timedelta()
-last_record = datetime.now(timezone.utc)
 
 
 async def generate_today_statistics() -> str:
     await sleep(0)
 
     # calculate total call duration
-    call_duration = today_call_duration
+    call_duration = parse_timedelta(get_value('today_call_duration'))
     # add current call duration
     now = datetime.now(timezone.utc)
     for message_id in message_logs.values():
@@ -69,6 +63,10 @@ async def generate_today_statistics() -> str:
         call_duration += now - message.created_at
 
     # make formatted string
+    today_messages = get_value('today_messages')
+    today_messages_length = get_value('today_messages_length')
+    today_calls = get_value('today_calls')
+    today_reactions = get_value('today_reactions')
     return f'* `{today_messages}`개의 메시지가 전송되었습니다. (총 길이: `{today_messages_length}`문자)\n' \
            f'* 음성 채널이 `{today_calls}`번 활성화되었습니다.\n' \
            f'  * 총 통화 길이는 `{call_duration}`입니다.\n' \
@@ -77,12 +75,13 @@ async def generate_today_statistics() -> str:
 
 @tasks.loop(minutes=1)
 async def today_statistics():
-    global today_messages, today_messages_length, today_calls, today_people, today_call_duration
-    global last_record
+    global today_people
+
+    last_record = datetime.now(timezone.utc)
+    set_value('last_record', str(last_record))
 
     # check new day
-    previous = last_record
-    last_record = datetime.now(timezone.utc)
+    previous = parse_datetime(get_value('last_record'))
     # if same day, do nothing
     if previous.day == last_record.day:
         return
@@ -98,10 +97,10 @@ async def today_statistics():
     await text_channel.send(f'# `{previous.date()}`의 통계\n{await generate_today_statistics()}')
 
     # reset
-    today_messages = 0
-    today_messages_length = 0
-    today_calls = 0
-    today_call_duration = timedelta()
+    set_value('today_messages', 0)
+    set_value('today_messages_length', 0)
+    set_value('today_calls', 0)
+    set_value('today_call_duration', timedelta())
     today_people.clear()
 
 
@@ -131,8 +130,6 @@ message_logs: dict[int, int] = dict()
 
 
 async def voice_channel_notification(member: Member, before: VoiceState, after: VoiceState):
-    global today_calls, today_call_duration
-
     if member.guild.id != get_const('guild.lofanfashasch'):
         return
 
@@ -155,7 +152,8 @@ async def voice_channel_notification(member: Member, before: VoiceState, after: 
 
         if duration >= timedelta(hours=1):
             await text_channel.send(f'{before.channel.mention} 채널이 비활성화되었습니다. (활성 시간: {duration})')
-        today_call_duration += duration
+        today_call_duration = parse_timedelta(get_value('today_call_duration'))
+        set_value('today_call_duration', today_call_duration + duration)
 
         return
 
@@ -177,20 +175,21 @@ async def voice_channel_notification(member: Member, before: VoiceState, after: 
     message = await text_channel.send(f'{member.mention}님이 {after.channel.mention} 채널을 활성화했습니다. {mention_string}')
     message_logs[after.channel.id] = message.id
 
-    today_calls += 1
+    today_calls = int(get_value('today_calls'))
+    set_value('today_calls', today_calls + 1)
 
 
 @bot.event
 async def on_message(message: InteractionMessage):
-    global today_messages, today_messages_length
-
     lofanfashasch_id = get_const('guild.lofanfashasch')
 
     # record today statistics
     try:
         if message.guild.id == lofanfashasch_id:
-            today_messages += 1
-            today_messages_length += len(message.content)
+            today_messages = int(get_value('today_messages'))
+            set_value('today_messages', today_messages + 1)
+            today_messages_length = int(get_value('today_messages_length'))
+            set_value('today_messages_length', today_messages_length + len(message.content))
             today_people.add(message.author.id)
     except AttributeError:
         pass
@@ -206,11 +205,10 @@ async def on_message(message: InteractionMessage):
 
 @bot.event
 async def on_raw_reaction_add(payload: RawReactionActionEvent):
-    global today_reactions
-
     # record today statistics
     if payload.guild_id == get_const('guild.lofanfashasch'):
-        today_reactions += 1
+        today_reactions = get_value('today_reactions')
+        set_value('today_reactions', int(today_reactions) + 1)
         today_people.add(payload.user_id)
 
 
