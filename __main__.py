@@ -78,13 +78,14 @@ async def today_statistics():
     global today_people
 
     last_record = datetime.now(timezone.utc)
-    set_value('last_record', str(last_record))
 
     # check new day
     previous = parse_datetime(get_value('last_record'))
     # if same day, do nothing
     if previous.day == last_record.day:
         return
+
+    set_value('last_record', str(last_record))
 
     # record ppl on database
     previous_ppl = int(get_value(get_const('db.ppl')))
@@ -300,7 +301,7 @@ async def role_(ctx: Interaction, member: Member):
 
 
 @bot.tree.command(description='역할에 어떤 멤버가 있는지 확인합니다.')
-async def check_role(ctx: Interaction, role: Role):
+async def check_role(ctx: Interaction, role: Role, ephemeral: bool = True):
     members = list()
     last_member_number = ''
     last_index = 0
@@ -313,8 +314,7 @@ async def check_role(ctx: Interaction, role: Role):
 
     await ctx.response.send_message(
             f'{role.name} 역할에 있는 멤버 목록은 다음과 같습니다. (총 {last_index}명, 계정 {len(members)}개)'
-            f'\n{list_string}'
-    )
+            f'\n{list_string}', ephemeral=ephemeral)
 
 
 async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
@@ -340,7 +340,9 @@ async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
 @has_role(get_const('role.harnavin'))
 async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member):
     # noinspection DuplicatedCode
-    await ctx.response.send_message(f'이름이 `{name}`인 {term}기 강의를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?')
+    await ctx.response.send_message(
+        f'이름이 `{name}`인 {term}기 강의를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?',
+        ephemeral=True)
     message = await ctx.original_response()
     await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
 
@@ -379,7 +381,9 @@ async def new_lecture_error(ctx: Interaction, error: Exception):
 @has_role(get_const('role.harnavin'))
 async def new_study(ctx: Interaction, name: str, term: int):
     # noinspection DuplicatedCode
-    await ctx.response.send_message(f'이름이 `{name}`인 {term}기 스터디를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?')
+    await ctx.response.send_message(
+        f'이름이 `{name}`인 {term}기 스터디를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?',
+        ephemeral=True)
     message = await ctx.original_response()
     await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
 
@@ -440,7 +444,7 @@ def parse_role_name(name: str) -> Tuple[bool, int, int, str]:
 @bot.tree.command(description='강의 목록을 확인합니다.')
 async def lectures(ctx: Interaction, term: int):
     if term <= 0:
-        await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.')
+        await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.', ephemeral=True)
         return
 
     lines = list()
@@ -460,16 +464,16 @@ async def lectures(ctx: Interaction, term: int):
     list_string = '> ' + '\n> '.join(lines[::-1])
 
     if not lines:
-        await ctx.response.send_message(f'{term}기에는 (아직) 강의가 없습니다!')
+        await ctx.response.send_message(f'{term}기에는 (아직) 강의가 없습니다!', ephemeral=True)
         return
 
-    await ctx.response.send_message(f'{term}기의 강의 목록은 다음과 같습니다.\n{list_string}')
+    await ctx.response.send_message(f'{term}기의 강의 목록은 다음과 같습니다.\n{list_string}', ephemeral=True)
 
 
 @bot.tree.command(description='스터디 목록을 확인합니다.')
 async def studies(ctx: Interaction, term: int):
     if term <= 0:
-        await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.')
+        await ctx.response.send_message(f':x: 기수는 1 이상으로 입력해야 합니다.', ephemeral=True)
         return
 
     lines = list()
@@ -489,26 +493,26 @@ async def studies(ctx: Interaction, term: int):
     list_string = '> ' + '\n> '.join(lines[::-1])
 
     if not lines:
-        await ctx.response.send_message(f'{term}기에는 (아직) 스터디가 없습니다!')
+        await ctx.response.send_message(f'{term}기에는 (아직) 스터디가 없습니다!', ephemeral=True)
         return
 
-    await ctx.response.send_message(f'{term}기의 스터디 목록은 다음과 같습니다.\n{list_string}')
+    await ctx.response.send_message(f'{term}기의 스터디 목록은 다음과 같습니다.\n{list_string}', ephemeral=True)
 
 
 @bot.tree.command(description='역할을 부여합니다.')
 async def give_role(ctx: Interaction, role: Role):
     await ctx.user.add_roles(role)
-    await ctx.response.send_message(f'{ctx.user.mention}에게 {role}{eul_reul(role.name)} 부여했습니다.')
+    await ctx.response.send_message(f'{ctx.user.mention}에게 {role}{eul_reul(role.name)} 부여했습니다.', ephemeral=True)
 
 
 @bot.tree.command(description='역할을 제거합니다.')
 async def remove_role(ctx: Interaction, role: Role):
     await ctx.user.remove_roles(role)
-    await ctx.response.send_message(f'{ctx.user.mention}에게서 {role}{eul_reul(role.name)} 제거했습니다.')
+    await ctx.response.send_message(f'{ctx.user.mention}에게서 {role}{eul_reul(role.name)} 제거했습니다.', ephemeral=True)
 
 
 @bot.tree.command(description='D-Day를 계산합니다.')
-async def dday(ctx: Interaction, year: int, month: int, day: int):
+async def dday(ctx: Interaction, year: int, month: int, day: int, ephemeral: bool = True):
     today = date.today()
     diff = today - date(year, month, day)
     days = diff.days
@@ -517,7 +521,8 @@ async def dday(ctx: Interaction, year: int, month: int, day: int):
     if days > 0:
         after = f' 당일을 포함하면 __{days + 1}일째__입니다.'
 
-    await ctx.response.send_message(f'오늘은 {year}년 {month}월 {day}일에 대해 __D{days:+}__입니다.{after}')
+    await ctx.response.send_message(f'오늘은 {year}년 {month}월 {day}일에 대해 __D{days:+}__입니다.{after}',
+                                    ephemeral=ephemeral)
 
 
 @bot.tree.command(description='음성 채널의 업타임을 계산합니다.')
@@ -526,27 +531,27 @@ async def uptime(ctx: Interaction, channel: Optional[VoiceChannel] = None):
         channel = ctx.user.voice.channel
 
     if channel is None:
-        await ctx.response.send_message('음성 채널 정보를 찾을 수 없습니다.')
+        await ctx.response.send_message('음성 채널 정보를 찾을 수 없습니다.', ephemeral=True)
         return
 
     if ctx.guild.id != get_const('guild.lofanfashasch'):
-        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.')
+        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.', ephemeral=True)
         pass
 
     message_id = message_logs.get(channel.id)
     if message_id is None:
-        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.')
+        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.', ephemeral=True)
         return
 
     text_channel = ctx.guild.get_channel(get_const('channel.general'))
     try:
         message = await text_channel.fetch_message(message_id)
     except NotFound:
-        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.')
+        await ctx.response.send_message('음성 채널 시작 시간에 대한 정보가 없습니다.', ephemeral=True)
         return
 
     duration = datetime.now(timezone.utc) - message.created_at
-    await ctx.response.send_message(f'{channel.mention}의 업타임은 __{duration}__입니다.')
+    await ctx.response.send_message(f'{channel.mention}의 업타임은 __{duration}__입니다.', ephemeral=True)
 
 
 @bot.tree.command(description='지금까지의 오늘 통계를 확인합니다.')
@@ -743,7 +748,7 @@ async def handle_bet(ctx: Interaction, dealer: Member, amount: int):
     await ctx.response.send_message(
         f'{dealer.mention}님을 딜러로 하여 __**{amount / 100:,.2f} Ł**__을 베팅했습니다.\n'
         f'현재 __{ctx.user}__님이 베팅한 금액은 총 __**{my_total_bet / 100:,.2f} Ł**__이며, '
-        f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed, ephemeral=True)
+        f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
 
 
 @bot.tree.command(description='금액을 베팅하거나 베팅 현황을 확인합니다.')
@@ -781,7 +786,7 @@ async def unroll(ctx: Interaction, to: Member):
 
 
 @bot.tree.command(description='돈을 송금합니다.')
-async def transfer(ctx: Interaction, amount: float, to: Member):
+async def transfer(ctx: Interaction, to: Member, amount: float):
     # preprocessing
     amount = round(amount * 100)
 
@@ -808,7 +813,7 @@ async def transfer(ctx: Interaction, amount: float, to: Member):
 
 
 @bot.tree.command(description='돈 소지 현황을 확인합니다.')
-async def rank(ctx: Interaction):
+async def rank(ctx: Interaction, ephemeral: bool = True):
     ranking = get_money_ranking()
 
     strings = list()
@@ -828,7 +833,7 @@ async def rank(ctx: Interaction):
         strings.append(f'1. __{member_string}__: __**{money_ / 100:,.2f} Ł**__')
 
     message = '\n'.join(strings)
-    await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}')
+    await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}', ephemeral=ephemeral)
 
 
 if __name__ == '__main__':
