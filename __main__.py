@@ -78,13 +78,14 @@ async def today_statistics():
     global today_people
 
     last_record = datetime.now(timezone.utc)
-    set_value('last_record', str(last_record))
 
     # check new day
     previous = parse_datetime(get_value('last_record'))
     # if same day, do nothing
     if previous.day == last_record.day:
         return
+
+    set_value('last_record', str(last_record))
 
     # record ppl on database
     previous_ppl = int(get_value(get_const('db.ppl')))
