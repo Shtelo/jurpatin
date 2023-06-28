@@ -2,6 +2,7 @@ import re
 from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
 from datetime import date, datetime, timedelta, timezone
 from math import inf
+from pprint import pformat
 from sys import argv
 from typing import Tuple, List, Optional
 
@@ -235,6 +236,16 @@ def get_proper_id(member: Member, role: int, guild: Guild) -> str:
         index += 1
 
     return candidate
+
+
+@bot.tree.command(name='eval', description='유르파틴 수식 내용을 확인합니다.')
+@has_role(get_const('role.harnavin'))
+async def eval_(ctx: Interaction, variable: str):
+    try:
+        formatted = pformat(eval(variable), indent=2)
+        await ctx.response.send_message(f'```\n{variable} = \\\n{formatted}\n```', ephemeral=True)
+    except Exception as e:
+        await ctx.response.send_message(f':x: 수식 실행중에 문제가 발생했습니다.\n```\n{e}\n```', ephemeral=True)
 
 
 @bot.tree.command(name='id', description='규칙에 따라 로판파샤스 아이디를 부여합니다.')
