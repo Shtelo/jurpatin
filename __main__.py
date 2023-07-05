@@ -7,7 +7,7 @@ from sys import argv
 from typing import Tuple, List, Optional
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
-    VoiceChannel, NotFound, RawReactionActionEvent, Embed
+    VoiceChannel, NotFound, RawReactionActionEvent, Embed, app_commands
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext import tasks
@@ -603,8 +603,10 @@ async def inventory(ctx: Interaction):
     await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
-@bot.tree.command(description='로판파샤스의 금일 PPL 지수를 확인합니다.')
-async def ppl(ctx: Interaction, ephemeral: bool = True):
+ppl_group = app_commands.Group(name="ppl", description="PPL 지수와 관련된 명령어입니다.")
+
+@ppl_group.command(name='check', description='로판파샤스의 금일 PPL 지수를 확인합니다.')
+async def ppl_check(ctx: Interaction, ephemeral: bool = True):
     # fetch ppl index from database
     ppl_index = int(get_value(get_const('db.ppl')))
     yesterday_ppl = int(get_value(get_const('db.yesterday_ppl')))
@@ -634,8 +636,8 @@ async def ppl(ctx: Interaction, ephemeral: bool = True):
         ephemeral=ephemeral)
 
 
-@bot.tree.command(description='PPL 상품을 구매합니다.')
-async def buy_ppl(ctx: Interaction, amount: int = 1):
+@ppl_group.command(name='buy', description='PPL 상품을 구매합니다.')
+async def ppl_buy(ctx: Interaction, amount: int = 1):
     if amount < 1:
         await ctx.response.send_message(f':x: 구매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
         return
@@ -671,8 +673,8 @@ async def buy_ppl(ctx: Interaction, amount: int = 1):
         f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
 
 
-@bot.tree.command(description='PPL 상품을 판매합니다.')
-async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
+@ppl_group.command(name='sell', description='PPL 상품을 판매합니다.')
+async def ppl_sell(ctx: Interaction, amount: int = 1, force: bool = False):
     if amount < 1:
         await ctx.response.send_message(f':x: 판매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
         return
@@ -707,6 +709,9 @@ async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
         f'PPL 상품 __{amount:,}__개를 판매하여 __**{price / 100:,.2f} Ł**__를 벌었습니다. '
         f'현재 PPL 지수는 __{ppl_index:,}__이며, PPL 상품을 __{now_having:,}__개를 소지하고 있습니다.\n'
         f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
+
+
+bot.tree.add_command(ppl_group)
 
 
 bets: dict[int, dict[int, int]] = dict()
@@ -762,26 +767,34 @@ async def handle_bet(ctx: Interaction, dealer: Member, amount: int):
         f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
 
 
-@bot.tree.command(description='금액을 베팅하거나 베팅 현황을 확인합니다.')
-async def bet(ctx: Interaction, dealer: Member, amount: float = 0.0):
+bet_group = app_commands.Group(name='bet', description='베팅 관련 명령어입니다.')
+
+
+@bet_group.command(name='raise', description='베팅 금액을 올립니다.')
+async def bet_raise(ctx: Interaction, dealer: Member, amount: float = 0.0):
     # preprocess amount
     amount = round(amount * 100)
 
+    if not amount:
+        await ctx.response.send_message(':x: 베팅 금액을 입력해주세요.', ephemeral=True)
+        return
+
     # process betting
-    if amount:
-        await handle_bet(ctx, dealer, amount)
-    # process checking
-    else:
-        if dealer.id not in bets:
-            await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
-            return
-
-        embed = make_bet_embed(ctx, dealer)
-        await ctx.response.send_message(embed=embed)
+    await handle_bet(ctx, dealer, amount)
 
 
-@bot.tree.command(description='베팅된 금액을 모두 회수하여 제공합니다.')
-async def unroll(ctx: Interaction, to: Member):
+@bet_group.command(name='info', description='베팅 현황을 확인합니다.')
+async def bet_info(ctx: Interaction, dealer: Member):
+    if dealer.id not in bets:
+        await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
+        return
+
+    embed = make_bet_embed(ctx, dealer)
+    await ctx.response.send_message(embed=embed)
+
+
+@bet_group.command(name='unroll', description='베팅된 금액을 모두 회수하여 제공합니다.')
+async def bet_unroll(ctx: Interaction, to: Member):
     if ctx.user.id not in bets:
         await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
         return
@@ -795,6 +808,8 @@ async def unroll(ctx: Interaction, to: Member):
     await ctx.response.send_message(
         f'__{ctx.user}__ 딜러 베팅 금액 __**{total_bet / 100:,.2f} Ł**__을 {to.mention}님에게 제공하였습니다.')
 
+
+bot.tree.add_command(bet_group)
 
 @bot.tree.command(description='돈을 송금합니다.')
 async def transfer(ctx: Interaction, to: Member, amount: float):
@@ -845,6 +860,168 @@ async def rank(ctx: Interaction, ephemeral: bool = True):
 
     message = '\n'.join(strings)
     await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}', ephemeral=ephemeral)
+
+
+prediction_group = app_commands.Group(name='predict', description='예측 베팅 관련 명령어입니다.')
+predictions: dict[int, tuple[str, str, str, datetime, dict[int, int], dict[int, int]]] = dict()
+"""
+dict[
+    dealer_id: int,
+    tuple[
+        title: str,
+        option1: str,
+        option2: str,
+        until: datetime,
+        option_1_players: dict[
+            predictor_id: int,
+            amount: int(cŁ)
+        ],
+        option_2_players: dict[
+            predictor_id: int,
+            amount: int(cŁ)
+        ]
+    ]
+]
+"""
+
+
+@prediction_group.command(name='start', description='예측 세션을 시작합니다.')
+async def prediction_start(ctx: Interaction, title: str, option1: str, option2: str, duration_second: int = 30):
+    if ctx.user.id in predictions:
+        await ctx.response.send_message(':x: 이미 예측 세션이 진행 중입니다. 세션을 종료한 후에 다시 시작해주세요.', ephemeral=True)
+        return
+
+    if duration_second <= 0:
+        await ctx.response.send_message(':x: 예측 세션의 지속 시간은 0초보다 커야 합니다.', ephemeral=True)
+        return
+
+    # update database
+    until = datetime.now() + timedelta(seconds=duration_second)
+    prediction = (title, option1, option2, until, dict(), dict())
+    predictions[ctx.user.id] = prediction
+
+    await ctx.response.send_message(
+        f'__{ctx.user}__님의 예측 세션이 시작되었습니다. '
+        f'예측 세션 제목: __**{title}**__, '
+        f'예측 세션 지속 시간: __**{duration_second}초** ({until}까지)__'
+        f'\n\n'
+        f'> __**{option1}**__에 대한 예측을 하려면 __`/predict for option:1 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
+        f'> __**{option2}**__에 대한 예측을 하려면 __`/predict for option:2 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
+        f'> 예측 세션을 종료하려면 __**/predict end**__를 입력해주세요.')
+
+
+def get_prediction_info(dealer_id: int) -> Embed:
+    embed = Embed(title='예측 세션 정보', colour=get_const('color.lofanfashasch'))
+
+    title, option1, option2, until, option_1_players, option_2_players = predictions[dealer_id]
+    embed.add_field(name='예측 세션 제목', value=title, inline=False)
+    embed.add_field(name='예측 세션 종료 시간', value=str(until))
+    embed.add_field(name='예측 세션 참여자 수', value=str(len(option_1_players) + len(option_2_players)))
+    embed.add_field(name='예측 옵션', value=f'1번 옵션: {option1}\n2번 옵션: {option2}', inline=False)
+    embed.add_field(name='예측자 수', value=f'1번 옵션: {len(option_1_players)}명, 2번 옵션: {len(option_2_players)}명',
+                    inline=False)
+    embed.add_field(name='베팅 금액', value=f'1번 옵션: {sum(option_1_players.values()) / 100:,.2f} Ł, '
+                                           f'2번 옵션: {sum(option_2_players.values()) / 100:,.2f} Ł', inline=False)
+
+    return embed
+
+
+@prediction_group.command(name='for', description='예측 세션에 베팅합니다.')
+async def prediction_for(ctx: Interaction, option: int, dealer: Member, amount: float):
+    # preprocess amount
+    amount = round(amount * 100)
+
+    # check if amount is valid
+    if amount <= 0:
+        await ctx.response.send_message(':x: 베팅 금액은 0을 초과해야 합니다.', ephemeral=True)
+        return
+
+    # check if user has enough money
+    having = get_money(ctx.user.id)
+    if having < amount:
+        await ctx.response.send_message(
+            f':x: 소지금이 부족합니다. '
+            f'(소지금: __**{having / 100:,.2f} Ł**__, 베팅 금액: __{amount / 100:,.2f} Ł__)',
+            ephemeral=True)
+        return
+
+    # check if prediction session is running
+    if dealer.id not in predictions:
+        await ctx.response.send_message(':x: 예측 세션이 진행 중이 아닙니다.', ephemeral=True)
+        return
+
+    # check if prediction session is expired
+    if datetime.now() > predictions[dealer.id][3]:
+        await ctx.response.send_message(':x: 예측 세션 참여 제한시간이 경과되었습니다.', ephemeral=True)
+        return
+
+    # check if option is valid
+    if option not in (1, 2):
+        await ctx.response.send_message(':x: 옵션은 1 또는 2여야 합니다.', ephemeral=True)
+        return
+
+    # update database
+    add_money(ctx.user.id, -amount)
+    if option == 1:
+        predictions[dealer.id][4][ctx.user.id] = predictions[dealer.id][4].get(ctx.user.id, 0) + amount
+    else:
+        predictions[dealer.id][5][ctx.user.id] = predictions[dealer.id][5].get(ctx.user.id, 0) + amount
+
+    await ctx.response.send_message(
+        f'{ctx.user.mention}님이 __**{amount / 100:,.2f} Ł**__를 __**{dealer}**__님의 예측 세션에 베팅하였습니다.',
+        embed=get_prediction_info(dealer.id))
+
+
+@prediction_group.command(name='end', description='예측 세션을 종료합니다.')
+async def prediction_end(ctx: Interaction, result: int):
+    # check if prediction session is running
+    if ctx.user.id not in predictions:
+        await ctx.response.send_message(':x: 예측 세션이 진행 중이 아닙니다.', ephemeral=True)
+        return
+
+    # check if result is valid
+    if result not in (1, 2):
+        await ctx.response.send_message(':x: 결과는 1 또는 2여야 합니다.', ephemeral=True)
+        return
+
+    # calculate multiplier
+    winner_is_option_1 = result == 1
+    option1_betting = sum(predictions[ctx.user.id][4].values())
+    option2_betting = sum(predictions[ctx.user.id][5].values())
+    total_betting = option1_betting + option2_betting
+    multiplier = total_betting / (option1_betting if winner_is_option_1 else option2_betting)
+    option1 = predictions[ctx.user.id][1]
+    option2 = predictions[ctx.user.id][2]
+
+    # update database
+    for user_id, amount in predictions[ctx.user.id][4 if winner_is_option_1 else 5].items():
+        add_money(user_id, round(amount * multiplier))
+
+    # send message
+    await ctx.response.send_message(
+        f'__**{ctx.user}**__님의 예측 세션이 종료되었습니다.\n'
+        f'> 1번 옵션: __**{option1_betting / 100:,.2f} Ł**__\n'
+        f'> 2번 옵션: __**{option2_betting / 100:,.2f} Ł**__\n'
+        f'> 총 베팅 금액: __**{total_betting / 100:,.2f} Ł**__\n'
+        f'> 결과: **__{"1번" if winner_is_option_1 else "2번"} 옵션__ '
+        f'({option1 if winner_is_option_1 else option2}) 승리**\n',
+        embed=get_prediction_info(ctx.user.id))
+    del predictions[ctx.user.id]
+
+
+@prediction_group.command(name='info', description='예측 세션 정보를 확인합니다.')
+async def prediction_info(ctx: Interaction, dealer: Member):
+    # check if prediction session is running
+    if dealer.id not in predictions:
+        await ctx.response.send_message(':x: 예측 세션이 진행 중이 아닙니다.', ephemeral=True)
+        return
+
+    # send message
+    await ctx.response.send_message(embed=get_prediction_info(dealer.id))
+
+
+bot.tree.add_command(prediction_group)
+
 
 
 if __name__ == '__main__':
