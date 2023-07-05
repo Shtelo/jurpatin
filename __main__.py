@@ -767,26 +767,34 @@ async def handle_bet(ctx: Interaction, dealer: Member, amount: int):
         f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
 
 
-@bot.tree.command(description='금액을 베팅하거나 베팅 현황을 확인합니다.')
-async def bet(ctx: Interaction, dealer: Member, amount: float = 0.0):
+bet_group = app_commands.Group(name='bet', description='베팅 관련 명령어입니다.')
+
+
+@bet_group.command(name='raise', description='베팅 금액을 올립니다.')
+async def bet_raise(ctx: Interaction, dealer: Member, amount: float = 0.0):
     # preprocess amount
     amount = round(amount * 100)
 
+    if not amount:
+        await ctx.response.send_message(':x: 베팅 금액을 입력해주세요.', ephemeral=True)
+        return
+
     # process betting
-    if amount:
-        await handle_bet(ctx, dealer, amount)
-    # process checking
-    else:
-        if dealer.id not in bets:
-            await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
-            return
-
-        embed = make_bet_embed(ctx, dealer)
-        await ctx.response.send_message(embed=embed)
+    await handle_bet(ctx, dealer, amount)
 
 
-@bot.tree.command(description='베팅된 금액을 모두 회수하여 제공합니다.')
-async def unroll(ctx: Interaction, to: Member):
+@bet_group.command(name='check', description='베팅 현황을 확인합니다.')
+async def bet_check(ctx: Interaction, dealer: Member):
+    if dealer.id not in bets:
+        await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
+        return
+
+    embed = make_bet_embed(ctx, dealer)
+    await ctx.response.send_message(embed=embed)
+
+
+@bet_group.command(name='unroll', description='베팅된 금액을 모두 회수하여 제공합니다.')
+async def bet_unroll(ctx: Interaction, to: Member):
     if ctx.user.id not in bets:
         await ctx.response.send_message(':x: 베팅 정보가 없습니다.', ephemeral=True)
         return
@@ -800,6 +808,8 @@ async def unroll(ctx: Interaction, to: Member):
     await ctx.response.send_message(
         f'__{ctx.user}__ 딜러 베팅 금액 __**{total_bet / 100:,.2f} Ł**__을 {to.mention}님에게 제공하였습니다.')
 
+
+bot.tree.add_command(bet_group)
 
 @bot.tree.command(description='돈을 송금합니다.')
 async def transfer(ctx: Interaction, to: Member, amount: float):
