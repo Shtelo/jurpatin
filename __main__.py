@@ -7,7 +7,7 @@ from sys import argv
 from typing import Tuple, List, Optional
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
-    VoiceChannel, NotFound, RawReactionActionEvent, Embed
+    VoiceChannel, NotFound, RawReactionActionEvent, Embed, app_commands
 from discord.app_commands import MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext import tasks
@@ -603,8 +603,10 @@ async def inventory(ctx: Interaction):
     await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
-@bot.tree.command(description='로판파샤스의 금일 PPL 지수를 확인합니다.')
-async def ppl(ctx: Interaction, ephemeral: bool = True):
+ppl_group = app_commands.Group(name="ppl", description="PPL 지수와 관련된 명령어입니다.")
+
+@ppl_group.command(name='check', description='로판파샤스의 금일 PPL 지수를 확인합니다.')
+async def ppl_check(ctx: Interaction, ephemeral: bool = True):
     # fetch ppl index from database
     ppl_index = int(get_value(get_const('db.ppl')))
     yesterday_ppl = int(get_value(get_const('db.yesterday_ppl')))
@@ -634,8 +636,8 @@ async def ppl(ctx: Interaction, ephemeral: bool = True):
         ephemeral=ephemeral)
 
 
-@bot.tree.command(description='PPL 상품을 구매합니다.')
-async def buy_ppl(ctx: Interaction, amount: int = 1):
+@ppl_group.command(name='buy', description='PPL 상품을 구매합니다.')
+async def ppl_buy(ctx: Interaction, amount: int = 1):
     if amount < 1:
         await ctx.response.send_message(f':x: 구매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
         return
@@ -671,8 +673,8 @@ async def buy_ppl(ctx: Interaction, amount: int = 1):
         f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
 
 
-@bot.tree.command(description='PPL 상품을 판매합니다.')
-async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
+@ppl_group.command(name='sell', description='PPL 상품을 판매합니다.')
+async def ppl_sell(ctx: Interaction, amount: int = 1, force: bool = False):
     if amount < 1:
         await ctx.response.send_message(f':x: 판매 수량은 1 이상으로 입력해야 합니다.', ephemeral=True)
         return
@@ -707,6 +709,9 @@ async def sell_ppl(ctx: Interaction, amount: int = 1, force: bool = False):
         f'PPL 상품 __{amount:,}__개를 판매하여 __**{price / 100:,.2f} Ł**__를 벌었습니다. '
         f'현재 PPL 지수는 __{ppl_index:,}__이며, PPL 상품을 __{now_having:,}__개를 소지하고 있습니다.\n'
         f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
+
+
+bot.tree.add_command(ppl_group)
 
 
 bets: dict[int, dict[int, int]] = dict()
