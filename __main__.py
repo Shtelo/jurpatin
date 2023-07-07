@@ -883,31 +883,75 @@ dict[
     ]
 ]
 """
+PREDICTION_FEE = 1000  # cŁ
 
 
-@prediction_group.command(name='start', description='예측 세션을 시작합니다.')
+@prediction_group.command(name='start', description=f'예측 세션을 시작합니다. {PREDICTION_FEE / 100:,.2f}Ł가 소모됩니다.')
 async def prediction_start(ctx: Interaction, title: str, option1: str, option2: str, duration_second: int = 30):
+    # check if user already has a prediction session
     if ctx.user.id in predictions:
         await ctx.response.send_message(':x: 이미 예측 세션이 진행 중입니다. 세션을 종료한 후에 다시 시작해주세요.', ephemeral=True)
         return
 
+    # check if duration is valid
     if duration_second <= 0:
         await ctx.response.send_message(':x: 예측 세션의 지속 시간은 0초보다 커야 합니다.', ephemeral=True)
         return
 
+    # check if user has enough money
+    having = get_money(ctx.user.id)
+    if having < PREDICTION_FEE:
+        await ctx.response.send_message(
+            f':x: 소지금이 부족합니다. '
+            f'(소지금: __**{having / 100:,.2f} Ł**__, 예측 세션 시작 비용: __{PREDICTION_FEE / 100:,.2f} Ł__)',
+            ephemeral=True)
+        return
+
     # update database
+    add_money(ctx.user.id, -PREDICTION_FEE)
+
     until = datetime.now() + timedelta(seconds=duration_second)
     prediction = (title, option1, option2, until, dict(), dict())
     predictions[ctx.user.id] = prediction
 
     await ctx.response.send_message(
-        f'__{ctx.user}__님의 예측 세션이 시작되었습니다. '
+        f'__{ctx.user}__님의 예측 세션이 시작되었습니다.\n'
         f'예측 세션 제목: __**{title}**__, '
-        f'예측 세션 지속 시간: __**{duration_second}초** ({until}까지)__'
-        f'\n\n'
+        f'예측 세션 지속 시간: __**{duration_second}초** ({until}까지)__.\n'
+        f'세션 지속 시간을 늘리고 싶다면 `/predict extend`를 입력해주세요.\n'
+        f'\n'
         f'> __**{option1}**__에 대한 예측을 하려면 __`/predict for option:1 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
         f'> __**{option2}**__에 대한 예측을 하려면 __`/predict for option:2 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
-        f'> 예측 세션을 종료하려면 __**/predict end**__를 입력해주세요.')
+        f'> 예측 세션을 종료하려면 __**`/predict end`**__를 입력해주세요.',
+        embed=get_prediction_info(ctx.user.id))
+
+
+@prediction_group.command(name='extend', description='예측 세션 참여 시간을 연장합니다.')
+async def prediction_extend(ctx: Interaction, duration_second_from_now: int):
+    # check if user has prediction session
+    if ctx.user.id not in predictions:
+        await ctx.response.send_message(':x: 예측 세션이 진행 중이지 않습니다.', ephemeral=True)
+        return
+
+    if duration_second_from_now <= 0:
+        await ctx.response.send_message(':x: 예측 세션의 지속 시간은 0초보다 커야 합니다.', ephemeral=True)
+        return
+
+    # update database
+    title, option1, option2, until, option_1_players, option_2_players = predictions[ctx.user.id]
+    until += timedelta(seconds=duration_second_from_now)
+    predictions[ctx.user.id] = (title, option1, option2, until, option_1_players, option_2_players)
+
+    await ctx.response.send_message(
+        f'__{ctx.user}__님의 예측 세션의 지속 시간이 연장되었습니다.\n'
+        f'예측 세션 제목: __**{title}**__, '
+        f'예측 세션 지속 시간: __**{duration_second_from_now}초** ({until}까지)__.\n'
+        f'세션 지속 시간을 늘리고 싶다면 `/predict extend`를 입력해주세요.\n'
+        f'\n'
+        f'> __**{option1}**__에 대한 예측을 하려면 __`/predict for option:1 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
+        f'> __**{option2}**__에 대한 예측을 하려면 __`/predict for option:2 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
+        f'> 예측 세션을 종료하려면 __**`/predict end`**__를 입력해주세요.',
+        embed=get_prediction_info(ctx.user.id))
 
 
 def get_prediction_info(dealer_id: int) -> Embed:
@@ -989,23 +1033,30 @@ async def prediction_end(ctx: Interaction, result: int):
     option1_betting = sum(predictions[ctx.user.id][4].values())
     option2_betting = sum(predictions[ctx.user.id][5].values())
     total_betting = option1_betting + option2_betting
-    multiplier = total_betting / (option1_betting if winner_is_option_1 else option2_betting)
     option1 = predictions[ctx.user.id][1]
     option2 = predictions[ctx.user.id][2]
+    message = f'__**{ctx.user}**__님의 예측 세션이 종료되었습니다.\n' \
+              f'> 1번 옵션: __**{option1_betting / 100:,.2f} Ł**__\n' \
+              f'> 2번 옵션: __**{option2_betting / 100:,.2f} Ł**__\n' \
+              f'> 총 베팅 금액: __**{total_betting / 100:,.2f} Ł**__\n' \
+              f'> 결과: **__{"1번" if winner_is_option_1 else "2번"} 옵션__ ' \
+              f'({option1 if winner_is_option_1 else option2}) 승리**'
+    try:
+        multiplier = total_betting / (option1_betting if winner_is_option_1 else option2_betting)
+    except ZeroDivisionError:
+        add_money(ctx.user.id, total_betting)
+        await ctx.response.send_message(
+            message + '\n> 승리 옵션의 베팅 금액이 없으므로 베팅 진행자가 베팅 금액을 모두 가져갑니다.',
+            embed=get_prediction_info(ctx.user.id))
+        del predictions[ctx.user.id]
+        return
 
     # update database
     for user_id, amount in predictions[ctx.user.id][4 if winner_is_option_1 else 5].items():
         add_money(user_id, round(amount * multiplier))
 
     # send message
-    await ctx.response.send_message(
-        f'__**{ctx.user}**__님의 예측 세션이 종료되었습니다.\n'
-        f'> 1번 옵션: __**{option1_betting / 100:,.2f} Ł**__\n'
-        f'> 2번 옵션: __**{option2_betting / 100:,.2f} Ł**__\n'
-        f'> 총 베팅 금액: __**{total_betting / 100:,.2f} Ł**__\n'
-        f'> 결과: **__{"1번" if winner_is_option_1 else "2번"} 옵션__ '
-        f'({option1 if winner_is_option_1 else option2}) 승리**\n',
-        embed=get_prediction_info(ctx.user.id))
+    await ctx.response.send_message(message, embed=get_prediction_info(ctx.user.id))
     del predictions[ctx.user.id]
 
 
