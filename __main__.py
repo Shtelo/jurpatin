@@ -901,13 +901,43 @@ async def prediction_start(ctx: Interaction, title: str, option1: str, option2: 
     predictions[ctx.user.id] = prediction
 
     await ctx.response.send_message(
-        f'__{ctx.user}__님의 예측 세션이 시작되었습니다. '
+        f'__{ctx.user}__님의 예측 세션이 시작되었습니다.\n'
         f'예측 세션 제목: __**{title}**__, '
-        f'예측 세션 지속 시간: __**{duration_second}초** ({until}까지)__'
-        f'\n\n'
+        f'예측 세션 지속 시간: __**{duration_second}초** ({until}까지)__.\n'
+        f'세션 지속 시간을 늘리고 싶다면 `/predict extend`를 입력해주세요.\n'
+        f'\n'
         f'> __**{option1}**__에 대한 예측을 하려면 __`/predict for option:1 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
         f'> __**{option2}**__에 대한 예측을 하려면 __`/predict for option:2 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
-        f'> 예측 세션을 종료하려면 __**/predict end**__를 입력해주세요.')
+        f'> 예측 세션을 종료하려면 __**`/predict end`**__를 입력해주세요.',
+        embed=get_prediction_info(ctx.user.id))
+
+
+@prediction_group.command(name='extend', description='예측 세션 참여 시간을 연장합니다.')
+async def prediction_extend(ctx: Interaction, duration_second_from_now: int):
+    # check if user has prediction session
+    if ctx.user.id not in predictions:
+        await ctx.response.send_message(':x: 예측 세션이 진행 중이지 않습니다.', ephemeral=True)
+        return
+
+    if duration_second_from_now <= 0:
+        await ctx.response.send_message(':x: 예측 세션의 지속 시간은 0초보다 커야 합니다.', ephemeral=True)
+        return
+
+    # update database
+    title, option1, option2, until, option_1_players, option_2_players = predictions[ctx.user.id]
+    until += timedelta(seconds=duration_second_from_now)
+    predictions[ctx.user.id] = (title, option1, option2, until, option_1_players, option_2_players)
+
+    await ctx.response.send_message(
+        f'__{ctx.user}__님의 예측 세션의 지속 시간이 연장되었습니다.\n'
+        f'예측 세션 제목: __**{title}**__, '
+        f'예측 세션 지속 시간: __**{duration_second_from_now}초** ({until}까지)__.\n'
+        f'세션 지속 시간을 늘리고 싶다면 `/predict extend`를 입력해주세요.\n'
+        f'\n'
+        f'> __**{option1}**__에 대한 예측을 하려면 __`/predict for option:1 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
+        f'> __**{option2}**__에 대한 예측을 하려면 __`/predict for option:2 dealer:{ctx.user} [베팅 금액]`__을 입력해주세요.\n'
+        f'> 예측 세션을 종료하려면 __**`/predict end`**__를 입력해주세요.',
+        embed=get_prediction_info(ctx.user.id))
 
 
 def get_prediction_info(dealer_id: int) -> Embed:
