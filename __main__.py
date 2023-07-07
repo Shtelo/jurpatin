@@ -883,19 +883,33 @@ dict[
     ]
 ]
 """
+PREDICTION_FEE = 1000  # cŁ
 
 
-@prediction_group.command(name='start', description='예측 세션을 시작합니다.')
+@prediction_group.command(name='start', description=f'예측 세션을 시작합니다. {PREDICTION_FEE / 100:,.2f}Ł가 소모됩니다.')
 async def prediction_start(ctx: Interaction, title: str, option1: str, option2: str, duration_second: int = 30):
+    # check if user already has a prediction session
     if ctx.user.id in predictions:
         await ctx.response.send_message(':x: 이미 예측 세션이 진행 중입니다. 세션을 종료한 후에 다시 시작해주세요.', ephemeral=True)
         return
 
+    # check if duration is valid
     if duration_second <= 0:
         await ctx.response.send_message(':x: 예측 세션의 지속 시간은 0초보다 커야 합니다.', ephemeral=True)
         return
 
+    # check if user has enough money
+    having = get_money(ctx.user.id)
+    if having < PREDICTION_FEE:
+        await ctx.response.send_message(
+            f':x: 소지금이 부족합니다. '
+            f'(소지금: __**{having / 100:,.2f} Ł**__, 예측 세션 시작 비용: __{PREDICTION_FEE / 100:,.2f} Ł__)',
+            ephemeral=True)
+        return
+
     # update database
+    add_money(ctx.user.id, -PREDICTION_FEE)
+
     until = datetime.now() + timedelta(seconds=duration_second)
     prediction = (title, option1, option2, until, dict(), dict())
     predictions[ctx.user.id] = prediction
