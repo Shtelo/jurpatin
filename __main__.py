@@ -989,23 +989,30 @@ async def prediction_end(ctx: Interaction, result: int):
     option1_betting = sum(predictions[ctx.user.id][4].values())
     option2_betting = sum(predictions[ctx.user.id][5].values())
     total_betting = option1_betting + option2_betting
-    multiplier = total_betting / (option1_betting if winner_is_option_1 else option2_betting)
     option1 = predictions[ctx.user.id][1]
     option2 = predictions[ctx.user.id][2]
+    message = f'__**{ctx.user}**__님의 예측 세션이 종료되었습니다.\n' \
+              f'> 1번 옵션: __**{option1_betting / 100:,.2f} Ł**__\n' \
+              f'> 2번 옵션: __**{option2_betting / 100:,.2f} Ł**__\n' \
+              f'> 총 베팅 금액: __**{total_betting / 100:,.2f} Ł**__\n' \
+              f'> 결과: **__{"1번" if winner_is_option_1 else "2번"} 옵션__ ' \
+              f'({option1 if winner_is_option_1 else option2}) 승리**'
+    try:
+        multiplier = total_betting / (option1_betting if winner_is_option_1 else option2_betting)
+    except ZeroDivisionError:
+        add_money(ctx.user.id, total_betting)
+        await ctx.response.send_message(
+            message + '\n> 승리 옵션의 베팅 금액이 없으므로 베팅 진행자가 베팅 금액을 모두 가져갑니다.',
+            embed=get_prediction_info(ctx.user.id))
+        del predictions[ctx.user.id]
+        return
 
     # update database
     for user_id, amount in predictions[ctx.user.id][4 if winner_is_option_1 else 5].items():
         add_money(user_id, round(amount * multiplier))
 
     # send message
-    await ctx.response.send_message(
-        f'__**{ctx.user}**__님의 예측 세션이 종료되었습니다.\n'
-        f'> 1번 옵션: __**{option1_betting / 100:,.2f} Ł**__\n'
-        f'> 2번 옵션: __**{option2_betting / 100:,.2f} Ł**__\n'
-        f'> 총 베팅 금액: __**{total_betting / 100:,.2f} Ł**__\n'
-        f'> 결과: **__{"1번" if winner_is_option_1 else "2번"} 옵션__ '
-        f'({option1 if winner_is_option_1 else option2}) 승리**\n',
-        embed=get_prediction_info(ctx.user.id))
+    await ctx.response.send_message(message, embed=get_prediction_info(ctx.user.id))
     del predictions[ctx.user.id]
 
 
