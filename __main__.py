@@ -883,7 +883,7 @@ dict[
     ]
 ]
 """
-PREDICTION_FEE = 1000  # cŁ
+PREDICTION_FEE = 500  # cŁ
 
 
 @prediction_group.command(name='start', description=f'예측 세션을 시작합니다. {PREDICTION_FEE / 100:,.2f}Ł가 소모됩니다.')
