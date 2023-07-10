@@ -573,13 +573,28 @@ async def today(ctx: Interaction):
         f'`{now.date()}`의 현재까지의 통계\n{await generate_today_statistics()}', ephemeral=True)
 
 
-@bot.tree.command(description='소지금을 확인합니다.')
+MONEY_CHECK_FEE = 50
+
+
+@bot.tree.command(description=f'소지금을 확인합니다. 다른 사람의 소지금을 확인할 때에는 {MONEY_CHECK_FEE / 100:,.2f} Ł의 수수료가 부과됩니다.')
 async def money(ctx: Interaction, member: Optional[Member] = None, ephemeral: bool = True):
     if member is None:
         member = ctx.user
 
+    # fee
+    feed = ''
+    if member.id != ctx.user.id:
+        having = get_money(ctx.user.id)
+        if having < MONEY_CHECK_FEE:
+            await ctx.response.send_message(f':x: 소지금이 부족하여 다른 사람의 소지금을 확인할 수 없습니다. '
+                                            f'(현재 {having / 100:,.2f} Ł)', ephemeral=ephemeral)
+            return
+
+        add_money(ctx.user.id, -MONEY_CHECK_FEE)
+        feed = f'__{MONEY_CHECK_FEE / 100:,.2f} Ł__를 사용하여 다른 사람의 소지금을 확인했습니다. '
+
     having = get_money(member.id)
-    await ctx.response.send_message(f'__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
+    await ctx.response.send_message(f'{feed}__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
