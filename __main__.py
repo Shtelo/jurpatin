@@ -352,8 +352,7 @@ async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
 async def new_lecture(ctx: Interaction, name: str, term: int, erasheniluin: Member):
     # noinspection DuplicatedCode
     await ctx.response.send_message(
-        f'이름이 `{name}`인 {term}기 강의를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?',
-        ephemeral=True)
+        f'이름이 `{name}`인 {term}기 강의를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?')
     message = await ctx.original_response()
     await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
 
@@ -393,8 +392,7 @@ async def new_lecture_error(ctx: Interaction, error: Exception):
 async def new_study(ctx: Interaction, name: str, term: int):
     # noinspection DuplicatedCode
     await ctx.response.send_message(
-        f'이름이 `{name}`인 {term}기 스터디를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?',
-        ephemeral=True)
+        f'이름이 `{name}`인 {term}기 스터디를 개설합니다. 이 작업을 취소하는 기능은 지원되지 않습니다. 동의하십니까?')
     message = await ctx.original_response()
     await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
 
