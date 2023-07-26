@@ -577,7 +577,7 @@ MONEY_CHECK_FEE = 50
 
 
 @bot.tree.command(description=f'소지금을 확인합니다. 다른 사람의 소지금을 확인할 때에는 {MONEY_CHECK_FEE / 100:,.2f} Ł의 수수료가 부과됩니다.')
-async def money(ctx: Interaction, member: Optional[Member] = None, ephemeral: bool = True):
+async def money(ctx: Interaction, member: Optional[Member] = None, total: bool = False, ephemeral: bool = True):
     if member is None:
         member = ctx.user
 
@@ -593,8 +593,22 @@ async def money(ctx: Interaction, member: Optional[Member] = None, ephemeral: bo
         add_money(ctx.user.id, -MONEY_CHECK_FEE)
         feed = f'__{MONEY_CHECK_FEE / 100:,.2f} Ł__를 사용하여 다른 사람의 소지금을 확인했습니다. '
 
+    # money in hand
     having = get_money(member.id)
-    await ctx.response.send_message(f'{feed}__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.', ephemeral=ephemeral)
+
+    # ppl
+    ppl_message = ''
+    total_message = ''
+    ppl_having = get_inventory(member.id).get(get_const('db.ppl_having'), 0)
+    if total and ppl_having > 0:
+        ppl_price = int(get_value(get_const('db.ppl'))) * 100
+        ppl_money = ppl_having * ppl_price
+        ppl_message = f'PPL은 __**{ppl_having}개**__를 가지고 있고, PPL 가격은 총 __{ppl_money / 100:,.2f} Ł__입니다.\n'
+
+        total_message = f'따라서 총자산은 __**{(having + ppl_money) / 100:,.2f} Ł**__입니다.\n'
+
+    await ctx.response.send_message(f'{feed}__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.\n'
+                                    f'{ppl_message}{total_message}', ephemeral=ephemeral)
 
 
 @bot.tree.command(description='소지품을 확인합니다.')
