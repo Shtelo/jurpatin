@@ -59,6 +59,10 @@ def set_money(user_id: int, money: int) -> None:
 
 
 def add_money(user_id: int, money: int) -> None:
+    """
+    :param user_id: User ID
+    :param money: Amount of money to add in cŁ
+    """
     database = get_connection()
     with database.cursor() as cursor:
         cursor.execute('INSERT INTO money (id, money) VALUES (%s, %s) '
@@ -125,6 +129,20 @@ def add_inventory(user_id: int, name: str, amount: int) -> None:
     with database.cursor() as cursor:
         cursor.execute('INSERT INTO inventory (id, name, amount) VALUES (%s, %s, %s) '
                        'ON DUPLICATE KEY UPDATE amount = amount + %s', (user_id, name, amount, amount))
+        database.commit()
+
+
+def get_lotteries():
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute("SELECT id, name, amount FROM inventory WHERE name LIKE '로또: %'")
+        return cursor.fetchall()
+
+
+def clear_lotteries():
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute("DELETE FROM inventory WHERE name LIKE '로또: %'")
         database.commit()
 
 

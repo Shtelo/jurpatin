@@ -1,9 +1,9 @@
 import re
 from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
 from datetime import date, datetime, timedelta, timezone
-from math import inf
+from math import inf, exp
 from pprint import pformat
-from sys import argv
+from random import randint
 from typing import Tuple, List, Optional
 
 from discord import Intents, Interaction, Member, Role, Reaction, User, InteractionMessage, Guild, VoiceState, \
@@ -14,9 +14,9 @@ from discord.ext import tasks
 from discord.ext.commands import Bot, when_mentioned
 from sat_datetime import SatDatetime
 
-from util import get_secret, get_const, eul_reul, parse_datetime, parse_timedelta
+from util import get_const, eul_reul, parse_datetime, parse_timedelta
 from util.db import get_money, add_money, set_value, get_value, add_inventory, get_inventory, set_inventory, \
-    get_money_ranking
+    get_money_ranking, get_lotteries
 
 intents = Intents.default()
 intents.members = True
@@ -609,8 +609,8 @@ async def money(ctx: Interaction, member: Optional[Member] = None, total: bool =
                                     f'{ppl_message}{total_message}', ephemeral=ephemeral)
 
 
-@bot.tree.command(description='소지품을 확인합니다.')
-async def inventory(ctx: Interaction):
+@bot.tree.command(name='inventory', description='소지품을 확인합니다.')
+async def inventory_(ctx: Interaction):
     having = get_inventory(ctx.user.id)
 
     # if inventory is empty
@@ -1101,6 +1101,140 @@ async def prediction_info(ctx: Interaction, dealer: Member):
 bot.tree.add_command(prediction_group)
 
 
+lottery_group = app_commands.Group(name='lottery', description='로또 관련 명령어입니다.')
+LOTTERY_PRICE = 2000
+LOTTERY_NUMBER_RANGE = 100
+LOTTERY_COLOR = 0xfcba03
+LOTTERY_RE = re.compile(r'^로또: (\d{1,2}), (\d{1,2}), (\d{1,2}), (\d{1,2}), (\d{1,2}), (\d{1,2})$')
+
+
+async def check_lottery_having(ctx: Interaction, amount: int) -> bool:
+    # get current lottery having amount
+    inventory = get_inventory(ctx.user.id)
+    lotteries = list()
+    now_having = 0
+    for item in inventory.items():
+        if item[0].startswith('로또: '):
+            lotteries.append(item)
+            now_having += item[1]
+
+    # check if amount is valid
+    if now_having + amount > 10:
+        await ctx.response.send_message(f':x: 로또는 한번에 최대 10개까지 보유할 수 있습니다. '
+                                        f'(현재 __{now_having}개__ 보유중입니다.)', ephemeral=True)
+        return True
+
+    return False
+
+
+@lottery_group.command(
+    name='auto', description=f'수를 자동으로 발급하여 로또를 구매합니다. 로또는 한 장에 {LOTTERY_PRICE / 100:,.2f} Ł입니다.')
+async def lottery_auto(ctx: Interaction, amount: int):
+    if check_lottery_having(ctx, amount):
+        return
+
+    # process buy
+    bought = list()
+    for _ in range(amount):
+        lottery = process_buy_lottery(ctx.user.id, generate_lottery_numbers())
+        bought.append(lottery)
+
+    # send message
+    await ctx.response.send_message(
+        f'{ctx.user.mention}님이 __**{amount}**__개의 로또를 구매하였습니다.',
+        embed=Embed(
+            title='구매한 로또',
+            description='\n'.join(f'**{i + 1}**. {", ".join(map(str, sorted(lotto)))}' for i, lotto in enumerate(bought)),
+            color=LOTTERY_COLOR),
+        ephemeral=True)
+
+
+def generate_lottery_numbers() -> set[int]:
+    numbers = set()
+    while len(numbers) < 6:
+        numbers.add(randint(1, LOTTERY_NUMBER_RANGE))
+    return numbers
+
+
+def process_buy_lottery(user_id: int, lotto_set: set[int]) -> set[int]:
+    # update database
+    add_money(user_id, -LOTTERY_PRICE)
+    add_inventory(user_id, f'로또: {", ".join(map(str, sorted(lotto_set)))}', 1)
+    return lotto_set
+
+
+@lottery_group.command(
+    name='buy', description=f'로또를 구매합니다. 로또는 한 장에 {LOTTERY_PRICE / 100:,.2f} Ł입니다.')
+async def lottery_buy(ctx: Interaction, a: int, b: int, c: int, d: int, e: int, f: int):
+    if check_lottery_having(ctx, 1):
+        return
+
+    # process buy
+    lottery_set = {a, b, c, d, e, f}
+    if len(lottery_set) != 6:
+        await ctx.response.send_message(f':x: 로또는 1부터 {LOTTERY_NUMBER_RANGE}까지의 서로 다른 숫자 6개를 입력해야 합니다.',
+                                        ephemeral=True)
+        return
+    lottery = process_buy_lottery(ctx.user.id, lottery_set)
+
+    # send message
+    await ctx.response.send_message(
+        f'{ctx.user.mention}님이 로또를 구매하였습니다.',
+        embed=Embed(
+            title='구매한 로또',
+            description=f'{", ".join(map(str, sorted(lottery)))}',
+            color=LOTTERY_COLOR),
+        ephemeral=True)
+
+
+def calculate_similarity(lotto1: set[int], lotto2: set[int]) -> float:
+    difference = 0
+    for number1 in lotto1:
+        number2 = min(lotto2, key=lambda x: abs(x - number1))
+        difference += min(abs(number1 - number2),
+                          abs(number1 - number2 - LOTTERY_NUMBER_RANGE),
+                          abs(number1 - number2 + LOTTERY_NUMBER_RANGE))
+    for number1 in lotto2:
+        number2 = min(lotto1, key=lambda x: abs(x - number1))
+        difference += min(abs(number1 - number2),
+                          abs(number1 - number2 - LOTTERY_NUMBER_RANGE),
+                          abs(number1 - number2 + LOTTERY_NUMBER_RANGE))
+    # return (1 - difference / 400) ** 15
+    return exp((-0.8 * difference + 92) / 20) / exp(92 / 20)
+
+
+def calculate_lottery_prices(win: set[int]):
+    similarity_sum = 0
+    similarity_by_user: dict[int, list[float]] = dict()
+    lottery_count = 0
+    for user_id, name, amount in get_lotteries():
+        numbers = set(map(int, LOTTERY_RE.match(name).groups()))
+        similarity = calculate_similarity(win, numbers)
+        similarity_sum += similarity
+        similarity_by_user[user_id] = similarity_by_user.get(user_id, list()) + [similarity]
+        lottery_count += amount
+
+        print(f'{name} ({similarity})'
+                f' -> {similarity_by_user[user_id]} ({sum(similarity_by_user[user_id]) / similarity_sum * lottery_count})')
+
+    lottery_prize = lottery_count * LOTTERY_PRICE
+    prices = dict()
+    for user_id, similarities in similarity_by_user.items():
+        prices[user_id] = sum(similarities) / similarity_sum * lottery_prize
+
+    return prices
+
+
+bot.tree.add_command(lottery_group)
+
+
+# TODO: 일주일에 한번씩 로또 당첨자를 뽑아서 보상을 지급하는 기능
+# TODO: 구매한 로또 한번에 확인하는 기능
+
 
 if __name__ == '__main__':
-    bot.run(get_secret('test_bot_token' if '-t' in argv else 'bot_token'))
+    # bot.run(get_secret('test_bot_token' if '-t' in argv else 'bot_token'))
+
+    win_ = generate_lottery_numbers()
+    print(f'win: {win_}')
+    print(calculate_lottery_prices(win_))
