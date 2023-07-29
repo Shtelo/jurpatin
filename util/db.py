@@ -132,7 +132,8 @@ def add_inventory(user_id: int, name: str, amount: int) -> None:
         database.commit()
 
 
-def get_lotteries():
+# noinspection PyTypeChecker
+def get_lotteries() -> tuple[tuple[int, str, int], ...]:
     database = get_connection()
     with database.cursor() as cursor:
         cursor.execute("SELECT id, name, amount FROM inventory WHERE name LIKE '로또: %'")
