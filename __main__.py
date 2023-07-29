@@ -1104,7 +1104,7 @@ bot.tree.add_command(prediction_group)
 
 
 lottery_group = app_commands.Group(name='lottery', description='로또 관련 명령어입니다.')
-LOTTERY_PRICE = 1
+LOTTERY_PRICE = 2000
 LOTTERY_NUMBER_RANGE = 100
 LOTTERY_COLOR = 0xfcba03
 LOTTERY_RE = re.compile(r'^로또: (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3})$')
