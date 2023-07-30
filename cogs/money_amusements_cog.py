@@ -568,7 +568,8 @@ class MoneyAmusementsCog(Cog):
 
         # send message
         await ctx.response.send_message(
-            f'{ctx.user.mention}님이 __**{amount}**__개의 로또를 구매하였습니다.',
+            f'{ctx.user.mention}님이 __**{amount}**__개의 로또를 구매하였습니다. '
+            f'(총 __**{amount * LOTTERY_PRICE / 100:,.2f} Ł**__)',
             embed=Embed(
                 title='구매한 로또',
                 description='\n'.join(
@@ -598,7 +599,8 @@ class MoneyAmusementsCog(Cog):
 
         # send message
         await ctx.response.send_message(
-            f'{ctx.user.mention}님이 로또를 구매하였습니다.',
+            f'{ctx.user.mention}님이 로또를 구매하였습니다. '
+            f'(총 __**{LOTTERY_PRICE / 100:,.2f} Ł**__)',
             embed=Embed(
                 title='구매한 로또',
                 description=f'{", ".join(map(str, sorted(lottery)))}',
