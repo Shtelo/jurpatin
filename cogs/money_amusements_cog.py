@@ -549,6 +549,9 @@ class MoneyAmusementsCog(Cog):
     @lottery_group.command(
         name='auto', description=f'수를 자동으로 발급하여 로또를 구매합니다. 로또는 한 장에 {LOTTERY_PRICE / 100:,.2f} Ł입니다.')
     async def lottery_auto(self, ctx: Interaction, amount: int):
+        if amount <= 0:
+            await ctx.response.send_message(':x: 구매할 로또의 개수는 0보다 커야 합니다.', ephemeral=True)
+            return
         if await validate_lottery_amount(ctx, amount):
             return
 
