@@ -17,7 +17,7 @@ LOTTERY_PRICE = 2000  # cŁ
 LOTTERY_NUMBER_RANGE = 100
 LOTTERY_COLOR = 0xfcba03
 LOTTERY_RE = re.compile(r'^로또: (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3})$')
-LOTTERY_FEE_RATE = 0.05
+LOTTERY_FEE_RATE = -0.1
 
 
 async def validate_lottery_amount(ctx: Interaction, amount: int) -> bool:
