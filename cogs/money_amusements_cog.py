@@ -1,14 +1,16 @@
 import re
-from asyncio import sleep
+from asyncio import sleep, TimeoutError as AsyncioTimeoutError
 from datetime import datetime, timedelta, timezone
 from math import inf, exp
-from random import randint
+from random import randint, shuffle
+from typing import Union
 
-from discord import app_commands, Interaction, Member, Embed
+from discord import app_commands, Interaction, Member, Embed, Message
+from discord.app_commands import command
 from discord.ext import tasks
 from discord.ext.commands import Cog, Bot
 
-from util import get_const, parse_datetime
+from util import get_const, parse_datetime, check_reaction, custom_emoji
 from util.db import get_value, get_inventory, get_money, add_money, add_inventory, set_inventory, get_lotteries, \
     set_value, clear_lotteries
 
@@ -17,7 +19,15 @@ LOTTERY_PRICE = 2000  # cŁ
 LOTTERY_NUMBER_RANGE = 100
 LOTTERY_COLOR = 0xfcba03
 LOTTERY_RE = re.compile(r'^로또: (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3}), (\d{1,3})$')
-LOTTERY_FEE_RATE = -0.1
+LOTTERY_FEE_RATE = -0.1  # 수수료 비율
+INSTANT_LOTTERY_EMOJIS = [
+    custom_emoji('vea1', 1136151830691332146),
+    custom_emoji('vea5', 1136151832863965204),
+    custom_emoji('vea10', 1136151836521410565),
+    custom_emoji('vea50', 1136151839847501904),
+    custom_emoji('vea100', 1136151841718145064),
+]
+INSTANT_LOTTERY_SELECTIONS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
 
 
 async def validate_lottery_amount(ctx: Interaction, amount: int) -> bool:
@@ -608,6 +618,69 @@ class MoneyAmusementsCog(Cog):
                 title='구매한 로또',
                 description=f'{", ".join(map(str, sorted(lottery)))}',
                 color=LOTTERY_COLOR))
+
+    @command(
+        name='instant', description=f'즉석 복권을 발행합니다. 즉석 복권의 기대치는 100%입니다.')
+    async def instant(self, ctx: Interaction, price: float):
+        price = round(price * 100)
+        having = get_money(ctx.user.id)
+
+        # check if user has enough money
+        if price > having * 0.1:
+            await ctx.response.send_message(f'소지하고 있는 금액의 20%까지만 즉석 복권 발행에 사용할 수 있습니다. '
+                                            f'현재 __{ctx.user}__님의 소지금은 __{having / 100:,.2f} Ł__이므로 '
+                                            f'__**{having * 0.1 / 100:,.2f} Ł**__까지 즉석 복권을 발행할 수 있습니다.',
+                                            ephemeral=True)
+            return
+        add_money(ctx.user.id, -price)
+
+        # make lottery
+        lottery: list[Union[tuple, int]] = list(range(5))
+        shuffle(lottery)
+
+        for i in range(5):
+            lottery[i] = ((lottery[i] + 1) ** 2 / 11, INSTANT_LOTTERY_EMOJIS[lottery[i]])
+
+        # make embed for lottery scratching
+        embed = Embed(title='즉석 복권 발행',
+                      description=f'__{ctx.user}__님이 __{price / 100:,.2f} Ł__ 상당의 즉석 복권을 발행했습니다.',
+                      colour=LOTTERY_COLOR)
+        embed.add_field(name='복권',
+                        value=':orange_square: :orange_square: :orange_square: :orange_square: :orange_square:',
+                        inline=False)
+        embed.add_field(name='복권 당첨금 비율',
+                        value=f'* {INSTANT_LOTTERY_EMOJIS[0]}: {100 / 11:.0f}% ({price * 1 / 1100:,.2f} Ł)\n'
+                              f'* {INSTANT_LOTTERY_EMOJIS[1]}: {400 / 11:.0f}% ({price * 4 / 1100:,.2f} Ł)\n'
+                              f'* {INSTANT_LOTTERY_EMOJIS[2]}: {900 / 11:.0f}% ({price * 9 / 1100:,.2f} Ł)\n'
+                              f'* {INSTANT_LOTTERY_EMOJIS[3]}: {1600 / 11:.0f}% ({price * 16 / 1100:,.2f} Ł)\n'
+                              f'* {INSTANT_LOTTERY_EMOJIS[4]}: {2500 / 11:.0f}% ({price * 25 / 1100:,.2f} Ł)\n',
+        inline=False)
+        await ctx.response.send_message(
+            '5개의 버튼 중 하나를 1분 안에 눌러주세요. 선택을 진행하지 않으면 복권 발행이 취소되고 발행 비용이 반환되지 않습니다.',
+            embed=embed)
+        message = await ctx.original_response()
+
+        for emoji in INSTANT_LOTTERY_SELECTIONS:
+            await message.add_reaction(emoji)
+
+        # wait for reaction added
+        try:
+            res = await self.bot.wait_for('reaction_add',
+                                          check=check_reaction(INSTANT_LOTTERY_SELECTIONS, ctx, message.id),
+                                          timeout=60.0)
+        except AsyncioTimeoutError:
+            await message.edit(content=':x: 시간이 초과되어 작업이 취소되었습니다. 복권 발행 비용은 반환되지 않습니다.',
+                               embed=None)
+            return
+
+        # send and apply result
+        index = INSTANT_LOTTERY_SELECTIONS.index(res[0].emoji)
+        win = round(price * lottery[index][0])
+        embed.set_field_at(0, name='복권', value=' '.join(map(lambda x: x[1], lottery)), inline=False)
+        embed.add_field(name='결과', value=f'{lottery[index][1]} - __**{win / 100:,.2f} Ł** 당첨__')
+        await message.edit(content=f'__**{index + 1}**__번을 선택했습니다. 당첨금은 __**{win / 100:,.2f} Ł**__입니다.',
+                           embed=embed)
+        add_money(ctx.user.id, win)
 
 
 async def setup(bot):

@@ -2,13 +2,13 @@ import re
 from asyncio import sleep, wait, TimeoutError as AsyncioTimeoutError
 from math import inf
 
-from discord import Member, Guild, Interaction, Reaction, User, InteractionMessage, Role
+from discord import Member, Guild, Interaction, Reaction, InteractionMessage, Role
 from discord.app_commands import command, MissingRole
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Cog, Bot
 from sat_datetime import SatDatetime
 
-from util import get_const, eul_reul
+from util import get_const, eul_reul, check_reaction
 
 DECORATED_NICK_RE = re.compile(r'^\d{7} .+$')
 ROLE_ID_TABLE = (
@@ -40,13 +40,6 @@ async def assign_role(member: Member, role_number: str, guild: Guild):
         role = guild.get_role(ROLE_ID_TABLE[i])
         if role not in member.roles:
             await member.add_roles(role)
-
-
-def check_reaction(emojis: list[str], ctx: Interaction, message_id: int):
-    def checker(reaction: Reaction, user: User):
-        return user.id == ctx.user.id and str(reaction.emoji) in emojis and reaction.message.id == message_id
-
-    return checker
 
 
 async def get_position(ctx: Interaction, term: int, is_lecture: bool = True):
