@@ -627,7 +627,7 @@ class MoneyAmusementsCog(Cog):
 
         # check if user has enough money
         if price > having * 0.1:
-            await ctx.response.send_message(f'소지하고 있는 금액의 20%까지만 즉석 복권 발행에 사용할 수 있습니다. '
+            await ctx.response.send_message(f'소지하고 있는 금액의 10%까지만 즉석 복권 발행에 사용할 수 있습니다. '
                                             f'현재 __{ctx.user}__님의 소지금은 __{having / 100:,.2f} Ł__이므로 '
                                             f'__**{having * 0.1 / 100:,.2f} Ł**__까지 즉석 복권을 발행할 수 있습니다.',
                                             ephemeral=True)
