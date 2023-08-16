@@ -632,6 +632,11 @@ class MoneyAmusementsCog(Cog):
                                             f'__**{having * 0.1 / 100:,.2f} Ł**__까지 즉석 복권을 발행할 수 있습니다.',
                                             ephemeral=True)
             return
+
+        if price < 0:
+            await ctx.response.send_message(':x: 0원 이상만 구매할 수 있습니다.')
+            return
+
         add_money(ctx.user.id, -price)
 
         # make lottery
