@@ -1,6 +1,6 @@
 import re
 from asyncio import sleep, TimeoutError as AsyncioTimeoutError
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from math import inf, exp
 from random import randint, shuffle
 from typing import Union
@@ -12,7 +12,7 @@ from discord.ext.commands import Cog, Bot
 
 from util import get_const, parse_datetime, check_reaction, custom_emoji
 from util.db import get_value, get_inventory, get_money, add_money, add_inventory, set_inventory, get_lotteries, \
-    set_value, clear_lotteries
+    set_value, clear_lotteries, get_streak_information, update_streak
 
 PREDICTION_FEE = 500  # cŁ
 LOTTERY_PRICE = 2000  # cŁ
@@ -686,6 +686,35 @@ class MoneyAmusementsCog(Cog):
         await message.edit(content=f'__**{index + 1}**__번을 선택했습니다. 당첨금은 __**{win / 100:,.2f} Ł**__입니다.',
                            embed=embed)
         add_money(ctx.user.id, win)
+
+    @command(name='attend', description='로판파샤스에 출석합니다.')
+    async def attend(self, ctx: Interaction):
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        try:
+            streak, last_attend, max_streak = get_streak_information(ctx.user.id)
+        except IndexError:
+            streak = 0
+            last_attend = None
+            max_streak = 0
+
+        if last_attend == today:
+            await ctx.response.send_message(f':x: 오늘은 이미 출석했습니다. 오늘로 __{streak}일째__ 출석중입니다.', ephemeral=True)
+            return
+
+        if last_attend is None or last_attend < yesterday:
+            now_streak = 1
+        else:
+            now_streak = streak + 1
+
+        max_streak = max(now_streak, max_streak)
+
+        add_money(ctx.user.id, now_streak * 100)
+        update_streak(ctx.user.id, now_streak, today, max_streak)
+        await ctx.response.send_message(f'__{today}__ 출석을 확인했습니다. 현재 스트릭은 __**{now_streak}일**__, '
+                                        f'최고 스트릭은 __{max_streak}일__입니다. '
+                                        f'__{now_streak:,.2f} Ł__를 획득했습니다. :sunglasses:')
 
 
 async def setup(bot):

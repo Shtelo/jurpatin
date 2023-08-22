@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Optional, Any
 
 from pymysql import connect, Connection
@@ -147,6 +147,22 @@ def clear_lotteries():
         cursor.execute("DELETE FROM inventory WHERE name LIKE '로또: %'")
         database.commit()
 
+
+# noinspection PyTypeChecker
+def get_streak_information(user_id: int) -> tuple[int, date, int]:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT streak, last_attend, max_streak FROM attendance WHERE id = %s', (user_id,))
+        return cursor.fetchall()[0]
+
+
+def update_streak(user_id: int, streak: int, today: date, max_streak: int):
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO attendance (id, streak, last_attend, max_streak) VALUES (%s, %s, %s, %s) '
+                       'ON DUPLICATE KEY UPDATE streak = %s, last_attend = %s, max_streak = %s',
+                       (user_id, streak, today, max_streak, streak, today, max_streak))
+        database.commit()
 
 if __name__ == '__main__':
     from datetime import timedelta
