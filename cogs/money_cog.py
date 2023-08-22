@@ -238,7 +238,7 @@ class MoneyCog(Cog):
         # ppl
         ppl_message = ''
         total_message = ''
-        ppl_having = get_inventory(member.id).get(get_const('db.ppl_having'), 0)
+        ppl_having, _ = get_inventory(member.id).get(get_const('db.ppl_having'), (0, 0))
         if total and ppl_having > 0:
             ppl_price = int(get_value(get_const('db.ppl'))) * 100
             ppl_money = ppl_having * ppl_price
@@ -264,8 +264,8 @@ class MoneyCog(Cog):
             description='소지품을 확인합니다.')
         embed.set_thumbnail(url=ctx.user.avatar)
 
-        for key, value in having.items():
-            embed.add_field(name=key, value=f'{value}개', inline=True)
+        for key, (count, price) in having.items():
+            embed.add_field(name=key, value=f'* 가격: {price / 100:,.2f} Ł\n* 개수: {count}개', inline=True)
 
         await ctx.response.send_message(embed=embed, ephemeral=True)
 

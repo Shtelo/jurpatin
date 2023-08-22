@@ -106,30 +106,31 @@ def remove_value(key: str) -> None:
         database.commit()
 
 
-def get_inventory(user_id: int) -> dict[str, int]:
+def get_inventory(user_id: int) -> dict[str, tuple[int, int]]:
     database = get_connection()
     with database.cursor() as cursor:
-        cursor.execute('SELECT name, amount FROM inventory WHERE id = %s', (user_id,))
+        cursor.execute('SELECT name, amount, price FROM inventory WHERE id = %s', (user_id,))
         # noinspection PyTypeChecker
-        return dict(cursor.fetchall())
+        return dict(map(lambda x: (x[0], (x[1], x[2])), cursor.fetchall()))
 
 
-def set_inventory(user_id: int, name: str, amount: int) -> None:
+def set_inventory(user_id: int, name: str, amount: int, price: int = 0) -> None:
     database = get_connection()
     with database.cursor() as cursor:
         if amount:
-            cursor.execute('INSERT INTO inventory (id, name, amount) VALUES (%s, %s, %s) '
-                           'ON DUPLICATE KEY UPDATE amount = %s', (user_id, name, amount, amount))
+            cursor.execute('INSERT INTO inventory (id, name, amount, price) VALUES (%s, %s, %s, %s) '
+                           'ON DUPLICATE KEY UPDATE amount = %s, price = %s',
+                           (user_id, name, amount, price, amount, price))
         else:
             cursor.execute('DELETE FROM inventory WHERE id = %s AND name = %s', (user_id, name))
         database.commit()
 
 
-def add_inventory(user_id: int, name: str, amount: int) -> None:
+def add_inventory(user_id: int, name: str, amount: int, price: int = 0) -> None:
     database = get_connection()
     with database.cursor() as cursor:
-        cursor.execute('INSERT INTO inventory (id, name, amount) VALUES (%s, %s, %s) '
-                       'ON DUPLICATE KEY UPDATE amount = amount + %s', (user_id, name, amount, amount))
+        cursor.execute('INSERT INTO inventory (id, name, amount, price) VALUES (%s, %s, %s, %s) '
+                       'ON DUPLICATE KEY UPDATE amount = amount + %s', (user_id, name, amount, price, amount))
         database.commit()
 
 

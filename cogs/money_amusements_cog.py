@@ -38,7 +38,7 @@ async def validate_lottery_amount(ctx: Interaction, amount: int) -> bool:
     for item in inventory.items():
         if item[0].startswith('로또: '):
             lotteries.append(item)
-            now_having += item[1]
+            now_having += item[1][0]
 
     # check if amount is valid
     if now_having + amount > 10:
@@ -59,7 +59,7 @@ def generate_lottery_numbers() -> set[int]:
 def process_buy_lottery(user_id: int, lotto_set: set[int]) -> set[int]:
     # update database
     add_money(user_id, -LOTTERY_PRICE)
-    add_inventory(user_id, f'로또: {", ".join(map(str, sorted(lotto_set)))}', 1)
+    add_inventory(user_id, f'로또: {", ".join(map(str, sorted(lotto_set)))}', 1, LOTTERY_PRICE)
     return lotto_set
 
 
@@ -161,7 +161,7 @@ class MoneyAmusementsCog(Cog):
             multiplier = inf
 
         # calculate price of having ppl's
-        having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+        having, _ = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), (0, 0))
         having_price = having * ppl_index * 100
 
         if multiplier > 1:
@@ -207,7 +207,7 @@ class MoneyAmusementsCog(Cog):
         add_money(ctx.user.id, -price)
         add_inventory(ctx.user.id, get_const('db.ppl_having'), amount)
 
-        now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'))
+        now_having, _ = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), (0, 0))
         now_money = get_money(ctx.user.id)
         await ctx.response.send_message(
             f'PPL 상품 __{amount:,}__개를 구매했습니다. '
@@ -232,7 +232,7 @@ class MoneyAmusementsCog(Cog):
             return
 
         # check if user has enough ppl
-        having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+        having, _ = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), (0, 0))
         if_all = ''
         if having < amount:
             if_all = f'현재 소지하고 있는 PPL 상품은 총 __{having}__개입니다. 상품을 모두 판매합니다.\n'
@@ -243,7 +243,7 @@ class MoneyAmusementsCog(Cog):
         add_money(ctx.user.id, price)
         set_inventory(ctx.user.id, get_const('db.ppl_having'), having - amount)
 
-        now_having = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), 0)
+        now_having, _ = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), (0, 0))
         now_money = get_money(ctx.user.id)
         await ctx.response.send_message(
             f'{if_all}'
