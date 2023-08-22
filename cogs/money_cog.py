@@ -4,7 +4,7 @@ from typing import Optional
 
 from discord import NotFound, Member, VoiceState, InteractionMessage, RawReactionActionEvent, Interaction, Embed, \
     VoiceChannel, Reaction
-from discord.app_commands import command, Choice
+from discord.app_commands import command, Choice, Group
 from discord.ext import tasks
 from discord.ext.commands import Cog, Bot
 
@@ -16,6 +16,8 @@ MONEY_CHECK_FEE = 50
 
 
 class MoneyCog(Cog):
+    item_group = Group(name='item', description='인벤토리와 아이템 관련 명령어입니다.')
+
     def __init__(self, bot: Bot):
         self.bot = bot
 
@@ -250,26 +252,6 @@ class MoneyCog(Cog):
         await ctx.response.send_message(f'{feed}__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.\n'
                                         f'{ppl_message}{total_message}', ephemeral=ephemeral)
 
-    @command(name='inventory', description='소지품을 확인합니다.')
-    async def inventory_(self, ctx: Interaction):
-        having = get_inventory(ctx.user.id)
-
-        # if inventory is empty
-        if len(having) <= 0:
-            await ctx.response.send_message(f'소지품이 없습니다.', ephemeral=True)
-            return
-
-        # if not empty
-        embed = Embed(
-            colour=get_const('color.lofanfashasch'), title=f'__{ctx.user}__의 소지품',
-            description='소지품을 확인합니다.')
-        embed.set_thumbnail(url=ctx.user.avatar)
-
-        for key, (count, price) in having.items():
-            embed.add_field(name=key, value=f'* 가격: {price / 100:,.2f} Ł\n* 개수: {count}개', inline=True)
-
-        await ctx.response.send_message(embed=embed, ephemeral=True)
-
     @command(description='돈을 송금합니다.')
     async def transfer(self, ctx: Interaction, to: Member, amount: float):
         # preprocessing
@@ -319,7 +301,27 @@ class MoneyCog(Cog):
         message = '\n'.join(strings)
         await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}', ephemeral=ephemeral)
 
-    @command(description='가지고 있는 물건을 판매합니다.')
+    @item_group.command(description='소지품을 확인합니다.')
+    async def inventory(self, ctx: Interaction):
+        having = get_inventory(ctx.user.id)
+
+        # if inventory is empty
+        if len(having) <= 0:
+            await ctx.response.send_message(f'소지품이 없습니다.', ephemeral=True)
+            return
+
+        # if not empty
+        embed = Embed(
+            colour=get_const('color.lofanfashasch'), title=f'__{ctx.user}__의 소지품',
+            description='소지품을 확인합니다.')
+        embed.set_thumbnail(url=ctx.user.avatar)
+
+        for key, (count, price) in having.items():
+            embed.add_field(name=key, value=f'* 가격: {price / 100:,.2f} Ł\n* 개수: {count}개', inline=True)
+
+        await ctx.response.send_message(embed=embed, ephemeral=True)
+
+    @item_group.command(description='가지고 있는 물건을 판매합니다.')
     async def sell(self, ctx: Interaction, item: str, amount: int = 1):
         inventory = get_inventory(ctx.user.id)
         having, price = inventory.get(item, (0, 0))
