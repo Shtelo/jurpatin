@@ -1,15 +1,16 @@
-from asyncio import sleep
+from asyncio import sleep, TimeoutError as AsyncioTimeoutError, wait
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from discord import NotFound, Member, VoiceState, InteractionMessage, RawReactionActionEvent, Interaction, Embed, \
-    VoiceChannel
-from discord.app_commands import command
+    VoiceChannel, Reaction
+from discord.app_commands import command, Choice
 from discord.ext import tasks
 from discord.ext.commands import Cog, Bot
 
-from util import parse_timedelta, get_const, parse_datetime
-from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking
+from cogs.admin_cog import OX_EMOJIS
+from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction
+from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory
 
 MONEY_CHECK_FEE = 50
 
@@ -317,6 +318,65 @@ class MoneyCog(Cog):
 
         message = '\n'.join(strings)
         await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}', ephemeral=ephemeral)
+
+    @command(description='가지고 있는 물건을 판매합니다.')
+    async def sell(self, ctx: Interaction, item: str, amount: int = 1):
+        inventory = get_inventory(ctx.user.id)
+        having, price = inventory.get(item, (0, 0))
+
+        if amount < 1:
+            await ctx.response.send_message(f':x: 1개 이상만 판매할 수 있습니다.', ephemeral=True)
+            return
+
+        if amount > having:
+            await ctx.response.send_message(
+                f':x: 가지고 있는 것보다 많이 판매할 수 없습니다. '
+                f'현재 __{having}개__ 가지고 있고, __{amount}개__ 판매를 시도했습니다.', ephemeral=True)
+            return
+
+        # check if sure when price == 0
+        message = None
+        if not price:
+            await ctx.response.send_message(
+                ':warning: 이 상품은 가격이 책정되어있지 않습니다. 이 상품을 판매한다면 __**0.00 Ł**__를 받게 됩니다. '
+                '이 상품을 그래도 판매하시겠습니까?')
+            message = await ctx.original_response()
+            await wait((message.add_reaction(get_const('emoji.x')), message.add_reaction(get_const('emoji.o'))))
+
+            try:
+                res: tuple[Reaction, Member] = await self.bot.wait_for(
+                    'reaction_add',
+                    timeout=60.0,
+                    check=check_reaction(OX_EMOJIS, ctx, message.id))
+                await message.clear_reactions()
+            except AsyncioTimeoutError:
+                await message.edit(content=f':x: 시간이 초과되어 작업이 취소되었습니다.')
+                return
+
+            if res[0].emoji == get_const('emoji.x'):
+                await message.edit(content=f':x: 사용자가 작업을 취소하였습니다.')
+                return
+
+        # process sell
+        delta = price * amount
+        set_inventory(ctx.user.id, item, having - amount, price)
+        add_money(ctx.user.id, delta)
+        content = f'__{item}__{eul_reul(item)} __{amount}개__ 판매하여 __**{delta / 100:,.2f} Ł**__를 얻었습니다. ' \
+                  f'현재 소지금은 __{get_money(ctx.user.id) / 100:,.2f} Ł__입니다.'
+
+        if message is None:
+            await ctx.response.send_message(content)
+        else:
+            await message.edit(content=content)
+
+    @sell.autocomplete("item")
+    async def sell_autocomplete(self, ctx: Interaction, current: str) -> list[Choice[str]]:
+        inventory = get_inventory(ctx.user.id)
+
+        result = list(map(lambda x: Choice(name=f'{x[0]} ({x[1][0]} 개, 각각 {x[1][1] / 100:,.2f} Ł)', value=x[0]),
+                          filter(lambda x: current.lower() in x[0].lower(), inventory.items())))
+
+        return result
 
 
 async def setup(bot):
