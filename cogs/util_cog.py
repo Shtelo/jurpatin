@@ -33,19 +33,24 @@ def check_reminder(delta: timedelta) -> str:
     return ''
 
 
-async def invoke_reminder(reminder: Reminder, ctx: Interaction):
+async def invoke_reminder(reminder: Reminder, ctx: Interaction, reminders: list):
     # set reminder
     await ctx.response.send_message(f'__{reminder.time}__에 알리는 리마인더를 설정했습니다. '
                                     f'리마인더 실행 중에 유르파틴이 재시작되는경우 **리마인더가 실행되지 않습니다.**')
+    reminders.append(reminder)
     await reminder.wait()
 
     # notification
     content = f'\n> {reminder.message}' if reminder.message else ''
     await ctx.user.send(f'{ctx.user.mention} 리마인더가 알려드립니다. __{reminder.time}__입니다.{content}')
+    reminders.remove(reminder)
 
 
 class UtilCog(Cog):
     reminder_group = app_commands.Group(name='reminder', description='리마인더 관련 명령어입니다.')
+
+    def __init__(self):
+        self.reminders = list()
 
     @command(name='eval', description='유르파틴 수식 내용을 확인합니다.')
     @has_role(get_const('role.harnavin'))
@@ -80,7 +85,7 @@ class UtilCog(Cog):
             await ctx.response.send_message(f':x: 리마인더 설정에 실패했습니다. {error}')
             return
 
-        await invoke_reminder(Reminder(time, message, ctx.user.id), ctx)
+        await invoke_reminder(Reminder(time, message, ctx.user.id), ctx, self.reminders)
 
     @reminder_group.command(description='특정 시간에 리마인더를 설정합니다.')
     async def on(self, ctx: Interaction, hour: int, minute: int = 0, second: int = 0, day: Optional[int] = None,
@@ -102,8 +107,23 @@ class UtilCog(Cog):
             await ctx.response.send_message(f':x: 리마인더 설정에 실패했습니다. {error}')
             return
 
-        await invoke_reminder(Reminder(time, message, ctx.user.id), ctx)
+        await invoke_reminder(Reminder(time, message, ctx.user.id), ctx, self.reminders)
+
+    @reminder_group.command(description='예약되어있는 리마인더를 확인합니다.')
+    async def check(self, ctx: Interaction):
+        reminders = sorted(filter(lambda x: x.user_id == ctx.user.id, self.reminders), key=lambda x: x.time)
+
+        if not reminders:
+            await ctx.response.send_message('생성되어있는 리마인더가 없습니다.', ephemeral=True)
+            return
+
+        messages = list()
+        for reminder in reminders:
+            messages.append(f'* __**{reminder.time}**__' + (f': {reminder.message}' if reminder.message else ''))
+
+        await ctx.response.send_message(f'총 __{len(reminders)}개__의 리마인더가 있습니다.\n' + '\n'.join(messages),
+                                        ephemeral=True)
 
 
 async def setup(bot):
-    await bot.add_cog(UtilCog(bot))
+    await bot.add_cog(UtilCog())
