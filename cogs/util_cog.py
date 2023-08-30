@@ -83,7 +83,7 @@ class UtilCog(Cog):
         await invoke_reminder(Reminder(time, message, ctx.user.id), ctx)
 
     @reminder_group.command(description='특정 시간에 리마인더를 설정합니다.')
-    async def on(self, ctx: Interaction, hour: int, minute: int, second: int = 0, day: Optional[int] = None,
+    async def on(self, ctx: Interaction, hour: int, minute: int = 0, second: int = 0, day: Optional[int] = None,
                  message: str = ''):
         # get time
         now = datetime.now()
