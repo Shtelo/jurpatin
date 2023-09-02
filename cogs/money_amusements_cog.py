@@ -28,6 +28,7 @@ INSTANT_LOTTERY_EMOJIS = [
     custom_emoji('vea100', 1136151841718145064),
 ]
 INSTANT_LOTTERY_SELECTIONS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
+INSTANT_LOTTERY_RATES = [.25, .50, 1.0, 1.25, 2.0]
 
 
 async def validate_lottery_amount(ctx: Interaction, amount: int) -> bool:
@@ -644,7 +645,7 @@ class MoneyAmusementsCog(Cog):
         shuffle(lottery)
 
         for i in range(5):
-            lottery[i] = ((lottery[i] + 1) ** 2 / 11, INSTANT_LOTTERY_EMOJIS[lottery[i]])
+            lottery[i] = (INSTANT_LOTTERY_RATES[lottery[i]], INSTANT_LOTTERY_EMOJIS[lottery[i]])
 
         # make embed for lottery scratching
         embed = Embed(title='즉석 복권 발행',
@@ -654,12 +655,9 @@ class MoneyAmusementsCog(Cog):
                         value=':orange_square: :orange_square: :orange_square: :orange_square: :orange_square:',
                         inline=False)
         embed.add_field(name='복권 당첨금 비율',
-                        value=f'* {INSTANT_LOTTERY_EMOJIS[0]}: {100 / 11:.0f}% ({price * 1 / 1100:,.2f} Ł)\n'
-                              f'* {INSTANT_LOTTERY_EMOJIS[1]}: {400 / 11:.0f}% ({price * 4 / 1100:,.2f} Ł)\n'
-                              f'* {INSTANT_LOTTERY_EMOJIS[2]}: {900 / 11:.0f}% ({price * 9 / 1100:,.2f} Ł)\n'
-                              f'* {INSTANT_LOTTERY_EMOJIS[3]}: {1600 / 11:.0f}% ({price * 16 / 1100:,.2f} Ł)\n'
-                              f'* {INSTANT_LOTTERY_EMOJIS[4]}: {2500 / 11:.0f}% ({price * 25 / 1100:,.2f} Ł)\n',
-        inline=False)
+                        value='\n'.join(f'* {INSTANT_LOTTERY_EMOJIS[i]}: {INSTANT_LOTTERY_RATES[i] * 100:.0f}% '
+                                        f'({price * INSTANT_LOTTERY_RATES[i] / 100:,.2f} Ł)' for i in range(5)),
+                        inline=False)
         await ctx.response.send_message(
             '5개의 버튼 중 하나를 1분 안에 눌러주세요. 선택을 진행하지 않으면 복권 발행이 취소되고 발행 비용이 반환되지 않습니다.',
             embed=embed)
