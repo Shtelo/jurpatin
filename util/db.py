@@ -165,6 +165,14 @@ def update_streak(user_id: int, streak: int, today: date, max_streak: int):
                        (user_id, streak, today, max_streak, streak, today, max_streak))
         database.commit()
 
+
+def get_streak_rank() -> tuple[tuple[int, int]]:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT id, streak FROM attendance ORDER BY streak DESC LIMIT 10')
+        return cursor.fetchall()
+
+
 if __name__ == '__main__':
     from datetime import timedelta
     set_value('test', timedelta(seconds=1239487))

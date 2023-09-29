@@ -12,7 +12,7 @@ from discord.ext.commands import Cog, Bot
 
 from util import get_const, parse_datetime, check_reaction, custom_emoji
 from util.db import get_value, get_inventory, get_money, add_money, add_inventory, set_inventory, get_lotteries, \
-    set_value, clear_lotteries, get_streak_information, update_streak
+    set_value, clear_lotteries, get_streak_information, update_streak, get_streak_rank
 
 PREDICTION_FEE = 500  # cŁ
 LOTTERY_PRICE = 2000  # cŁ
@@ -119,6 +119,7 @@ class MoneyAmusementsCog(Cog):
     bet_group = app_commands.Group(name='bet', description='베팅 관련 명령어입니다.')
     prediction_group = app_commands.Group(name='predict', description='예측 베팅 관련 명령어입니다.')
     lottery_group = app_commands.Group(name='lottery', description='로또 관련 명령어입니다.')
+    attend_group = app_commands.Group(name='attend', description='출석 관련 명령어입니다.')
 
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -685,8 +686,8 @@ class MoneyAmusementsCog(Cog):
                            embed=embed)
         add_money(ctx.user.id, win)
 
-    @command(name='attend', description='로판파샤스에 출석합니다.')
-    async def attend(self, ctx: Interaction):
+    @attend_group.command(name='check', description='로판파샤스에 출석합니다.')
+    async def attend_check(self, ctx: Interaction):
         today = date.today()
         yesterday = today - timedelta(days=1)
 
@@ -713,6 +714,19 @@ class MoneyAmusementsCog(Cog):
         await ctx.response.send_message(f'__{today}__ 출석을 확인했습니다. 현재 스트릭은 __**{now_streak}일**__, '
                                         f'최고 스트릭은 __{max_streak}일__입니다. '
                                         f'__{now_streak:,.2f} Ł__를 획득했습니다. :sunglasses:')
+
+    @attend_group.command(name='rank', description='출석 순위를 확인합니다.')
+    async def attend_rank(self, ctx: Interaction):
+        streak_rank = get_streak_rank()
+
+        rows = list()
+        for (user_id, streak) in streak_rank:
+            user = self.bot.get_user(user_id)
+            user = f'||__{user_id}__||' if user is None else str(user)
+
+            rows.append(f'1. {streak}일 연속 출석: {user}')
+
+        await ctx.response.send_message(f'**출석 현황** ({datetime.now()})\n' + '\n'.join(rows))
 
 
 async def setup(bot):
