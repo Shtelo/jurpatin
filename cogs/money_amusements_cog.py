@@ -302,12 +302,12 @@ class MoneyAmusementsCog(Cog):
             f'딜러 앞으로 베팅된 금액은 총 __{total_bet / 100:,.2f} Ł__입니다.', embed=embed)
 
     @bet_group.command(name='raise', description='베팅 금액을 올립니다.')
-    async def bet_raise(self, ctx: Interaction, dealer: Member, amount: float = 0.0):
+    async def bet_raise(self, ctx: Interaction, dealer: Member, amount: float):
         # preprocess amount
         amount = round(amount * 100)
 
-        if not amount:
-            await ctx.response.send_message(':x: 베팅 금액을 입력해주세요.', ephemeral=True)
+        if amount <= 0:
+            await ctx.response.send_message(':x: 베팅 금액은 0보다 이하로 설정할 수 없습니다.', ephemeral=True)
             return
 
         # process betting
