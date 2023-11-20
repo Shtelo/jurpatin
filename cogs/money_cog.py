@@ -105,6 +105,7 @@ class MoneyCog(Cog):
         set_value('today_messages_length', 0)
         set_value('today_calls', 0)
         set_value('today_call_duration', timedelta())
+        set_value('today_reactions', 0)
         self.today_people.clear()
 
     async def voice_channel_notification(self, member: Member, before: VoiceState, after: VoiceState):
