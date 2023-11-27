@@ -15,7 +15,7 @@ def get_connection():
     # if old connection
     if _get_connection_last_used is not None \
             and now - _get_connection_last_used > timedelta(hours=1) \
-            and _get_connection_cache is None:
+            and _get_connection_cache is not None:
         _get_connection_cache.close()
         _get_connection_cache = None
 
