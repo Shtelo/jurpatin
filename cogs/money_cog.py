@@ -9,9 +9,9 @@ from discord.ext import tasks
 from discord.ext.commands import Cog, Bot
 
 from cogs.admin_cog import OX_EMOJIS
-from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction
+from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction, generate_tax_message
 from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory, \
-    get_tax, add_tax
+    get_tax, add_tax, add_money_with_tax
 
 MONEY_CHECK_FEE = 50
 
@@ -62,7 +62,7 @@ class MoneyCog(Cog):
         try:
             if message.guild.id == lofanfashasch_id and (amount := len(set(message.content))):
                 # 지급 기준 변경 시 readme.md 수정 필요
-                add_money(message.author.id, amount)
+                add_money_with_tax(message.author.id, amount)
         except AttributeError:
             pass
 
@@ -78,7 +78,7 @@ class MoneyCog(Cog):
     async def give_money_if_call(self):
         for member_id in self.voice_people:
             # 지급 기준 변경 시 readme.md 수정 필요
-            add_money(member_id, 5)
+            add_money_with_tax(member_id, 5)
 
     @tasks.loop(minutes=1)
     async def today_statistics(self):
@@ -364,9 +364,10 @@ class MoneyCog(Cog):
         # process sell
         delta = price * amount
         set_inventory(ctx.user.id, item, having - amount, price)
-        add_money(ctx.user.id, delta)
+        non_tax, tax = add_money_with_tax(ctx.user.id, delta)
+        tax_message = generate_tax_message(tax)
         content = f'__{item}__{eul_reul(item)} __{amount}개__ 판매하여 __**{delta / 100:,.2f} Ł**__를 얻었습니다. ' \
-                  f'현재 소지금은 __{get_money(ctx.user.id) / 100:,.2f} Ł__입니다.'
+                  f'{tax_message}현재 소지금은 __{get_money(ctx.user.id) / 100:,.2f} Ł__입니다.'
 
         if message is None:
             await ctx.response.send_message(content)

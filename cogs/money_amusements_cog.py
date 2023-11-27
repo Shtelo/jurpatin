@@ -10,9 +10,9 @@ from discord.app_commands import command
 from discord.ext import tasks
 from discord.ext.commands import Cog, Bot
 
-from util import get_const, parse_datetime, check_reaction, custom_emoji
+from util import get_const, parse_datetime, check_reaction, custom_emoji, generate_tax_message
 from util.db import get_value, get_inventory, get_money, add_money, add_inventory, set_inventory, get_lotteries, \
-    set_value, clear_lotteries, get_streak_information, update_streak, get_streak_rank
+    set_value, clear_lotteries, get_streak_information, update_streak, get_streak_rank, add_money_with_tax
 
 PREDICTION_FEE = 500  # cŁ
 LOTTERY_PRICE = 2000  # cŁ
@@ -242,14 +242,15 @@ class MoneyAmusementsCog(Cog):
             price = amount * ppl_index * 100
 
         # update database
-        add_money(ctx.user.id, price)
+        non_tax, tax = add_money_with_tax(ctx.user.id, price)
+        tax_message = generate_tax_message(tax)
         set_inventory(ctx.user.id, get_const('db.ppl_having'), having - amount)
 
         now_having, _ = get_inventory(ctx.user.id).get(get_const('db.ppl_having'), (0, 0))
         now_money = get_money(ctx.user.id)
         await ctx.response.send_message(
             f'{if_all}'
-            f'PPL 상품 __{amount:,}__개를 판매하여 __**{price / 100:,.2f} Ł**__를 벌었습니다. '
+            f'PPL 상품 __{amount:,}__개를 판매하여 __**{price / 100:,.2f} Ł**__를 벌었습니다. {tax_message}'
             f'현재 PPL 지수는 __{ppl_index:,}__이며, PPL 상품을 __{now_having:,}__개를 소지하고 있습니다.\n'
             f'현재 소지금은 __**{now_money / 100:,.2f} Ł**__입니다.')
 
@@ -331,11 +332,12 @@ class MoneyAmusementsCog(Cog):
         total_bet = sum(self.bets[ctx.user.id].values())
 
         # update database
-        add_money(to.id, total_bet)
+        non_tax, tax = add_money_with_tax(to.id, total_bet)
+        tax_message = generate_tax_message(tax)
         self.bets.pop(ctx.user.id)
 
         await ctx.response.send_message(
-            f'__{ctx.user}__ 딜러 베팅 금액 __**{total_bet / 100:,.2f} Ł**__을 {to.mention}님에게 제공하였습니다.')
+            f'__{ctx.user}__ 딜러 베팅 금액 __**{total_bet / 100:,.2f} Ł**__을 {to.mention}님에게 제공하였습니다. {tax_message}')
 
     @prediction_group.command(name='extend', description='예측 세션 참여 시간을 연장합니다.')
     async def prediction_extend(self, ctx: Interaction, duration_second_from_now: int):
@@ -389,15 +391,16 @@ class MoneyAmusementsCog(Cog):
 
             lotteries = filter(lambda x: x[0] == user_id, get_lotteries())
 
+            # database update
+            non_tax, tax = add_money_with_tax(user_id, price)
+
+            # send message
             embed = get_lottery_embed(prices, win, now)
             embed.add_field(
                 name='구매한 로또 목록', value='\n'.join(map(lambda x: f'{x[1]} ({x[2]}개)', lotteries)), inline=False)
-            embed.add_field(name='당첨 금액', value=f'{price / 100:,.2f} Ł', inline=False)
-
-            # database update
-            add_money(user_id, price)
-
-            # send message
+            embed.add_field(name='총 당첨 금액', value=f'{price / 100:,.2f} Ł', inline=False)
+            embed.add_field(name='지급 금액', value=f'**{non_tax / 100:,.2f} Ł**', inline=False)
+            embed.add_field(name='세금 자동 납부', value=f'{tax / 100:,.2f} Ł', inline=False)
             await user.send(result_message, embed=embed)
 
         clear_lotteries()
@@ -533,7 +536,7 @@ class MoneyAmusementsCog(Cog):
         try:
             multiplier = total_betting / (option1_betting if winner_is_option_1 else option2_betting)
         except ZeroDivisionError:
-            add_money(ctx.user.id, total_betting)
+            add_money_with_tax(ctx.user.id, total_betting)
             await ctx.response.send_message(
                 message + '\n> 승리 옵션의 베팅 금액이 없으므로 베팅 진행자가 베팅 금액을 모두 가져갑니다.',
                 embed=self.get_prediction_info(ctx.user.id))
@@ -542,7 +545,7 @@ class MoneyAmusementsCog(Cog):
 
         # update database
         for user_id, amount in self.predictions[ctx.user.id][4 if winner_is_option_1 else 5].items():
-            add_money(user_id, round(amount * multiplier))
+            add_money_with_tax(user_id, round(amount * multiplier))
 
         # send message
         await ctx.response.send_message(message, embed=self.get_prediction_info(ctx.user.id))
@@ -680,11 +683,14 @@ class MoneyAmusementsCog(Cog):
         # send and apply result
         index = INSTANT_LOTTERY_SELECTIONS.index(res[0].emoji)
         win = round(price * lottery[index][0])
+        non_tax, tax = add_money_with_tax(ctx.user.id, win)
+        tax_message = generate_tax_message(tax)
+
         embed.set_field_at(0, name='복권', value=' '.join(map(lambda x: x[1], lottery)), inline=False)
         embed.add_field(name='결과', value=f'{lottery[index][1]} - __**{win / 100:,.2f} Ł** 당첨__')
-        await message.edit(content=f'__**{index + 1}**__번을 선택했습니다. 당첨금은 __**{win / 100:,.2f} Ł**__입니다.',
+        await message.edit(content=f'__**{index + 1}**__번을 선택했습니다. 당첨금은 __**{win / 100:,.2f} Ł**__입니다. '
+                                   f'{tax_message}',
                            embed=embed)
-        add_money(ctx.user.id, win)
 
     @attend_group.command(name='check', description='로판파샤스에 출석합니다.')
     async def attend_check(self, ctx: Interaction):
@@ -709,11 +715,12 @@ class MoneyAmusementsCog(Cog):
 
         max_streak = max(now_streak, max_streak)
 
-        add_money(ctx.user.id, now_streak * 100)
+        non_tax, tax = add_money_with_tax(ctx.user.id, now_streak * 100)
+        tax_message = generate_tax_message(tax)
         update_streak(ctx.user.id, now_streak, today, max_streak)
         await ctx.response.send_message(f'__{today}__ 출석을 확인했습니다. 현재 스트릭은 __**{now_streak}일**__, '
                                         f'최고 스트릭은 __{max_streak}일__입니다. '
-                                        f'__{now_streak:,.2f} Ł__를 획득했습니다. :sunglasses:')
+                                        f'__{now_streak:,.2f} Ł__를 획득했습니다. {tax_message}:sunglasses:')
 
     @attend_group.command(name='rank', description='출석 순위를 확인합니다.')
     async def attend_rank(self, ctx: Interaction):

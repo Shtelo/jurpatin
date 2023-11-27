@@ -191,5 +191,23 @@ def add_tax(user_id: int, amount: int):
         database.commit()
 
 
+def add_money_with_tax(user_id: int, amount: int) -> tuple[int, int]:
+    """
+    proceeds tax paying and give money.
+
+    :param user_id:
+    :param amount:
+    :return: non_tax amount and tax amount
+    """
+
+    tax = min(round(amount * 0.3), get_tax(user_id))
+    non_tax = amount - tax
+
+    add_tax(user_id, -tax)
+    add_money(user_id, non_tax)
+
+    return non_tax, tax
+
+
 if __name__ == '__main__':
     set_value('test', timedelta(seconds=1239487))
