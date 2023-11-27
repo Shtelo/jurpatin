@@ -17,8 +17,7 @@ bot = Bot(when_mentioned, intents=intents)
 
 @bot.event
 async def on_ready():
-    # await bot.tree.sync()
-    pass
+    await bot.tree.sync()
 
 
 async def load_extensions():
