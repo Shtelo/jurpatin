@@ -9,14 +9,40 @@ from discord.ext import tasks
 from discord.ext.commands import Cog, Bot
 
 from cogs.admin_cog import OX_EMOJIS
-from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction
-from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory
+from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction, generate_tax_message
+from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory, \
+    get_tax, add_tax, add_money_with_tax, get_everyone_id, get_total_inventory_value
 
 MONEY_CHECK_FEE = 50
 
 
+def get_asset(user_id):
+    wallet = get_money(user_id)
+
+    inventory = get_total_inventory_value(user_id)
+
+    ppl_price = int(get_value(get_const('db.ppl'))) * 100
+    ppl_having, _ = get_inventory(user_id).get(get_const('db.ppl_having'), (0, 0))
+    ppls = ppl_having * ppl_price
+
+    tax = get_tax(user_id)
+
+    return wallet + inventory + ppls - tax
+
+
+def calculate_tax(x: float) -> float:
+    """
+    :param x: asset amount in centilos
+    :return: tax in centilos
+    """
+    x /= 100
+    result = (x - 1_000_000 * (1 - pow(0.999, 0.9 * x / 1000))) * 100
+    return float(result)
+
+
 class MoneyCog(Cog):
     item_group = Group(name='item', description='인벤토리와 아이템 관련 명령어입니다.')
+    tax_group = Group(name='tax', description='세금과 관련된 명령어입니다.')
 
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -24,6 +50,29 @@ class MoneyCog(Cog):
         self.today_people = set()
         self.message_logs: dict[int, int] = dict()
         self.voice_people = set()
+
+    async def collect_taxes(self):
+        tasks_ = list()
+        for member_id in get_everyone_id():
+            asset = get_asset(member_id)
+            tax = calculate_tax(asset)
+            tax_rate = tax / asset
+
+            add_tax(member_id, round(tax))
+
+            member = self.bot.get_user(member_id)
+
+            embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.name}님께')
+            embed.add_field(name='자산 인정액', value=f'{asset / 100:,.2f} Ł')
+            embed.add_field(name='자산 인정액에 대한 세율', value=f'{tax_rate * 100:,.2f}%')
+            embed.add_field(name='세금', value=f'**{tax / 100:,.2f} Ł**')
+            tasks_.append(member.send(
+                '월 1일이 되어, 저번달 세금 명세서가 도착했습니다.\n'
+                '`/tax check`를 통해 현재 미납된 세금의 액수를 확인할 수 있고, '
+                '`/tax pay`를 통해 세금을 납부할 수 있습니다. '
+                '세금을 납부하지 않으면 로스화 지급 시 지급액의 일정 부분을 자동으로 징수하여 지급합니다.', embed=embed))
+
+        await wait(tasks_)
 
     @Cog.listener()
     async def on_ready(self):
@@ -60,7 +109,7 @@ class MoneyCog(Cog):
         try:
             if message.guild.id == lofanfashasch_id and (amount := len(set(message.content))):
                 # 지급 기준 변경 시 readme.md 수정 필요
-                add_money(message.author.id, amount)
+                add_money_with_tax(message.author.id, amount)
         except AttributeError:
             pass
 
@@ -76,7 +125,7 @@ class MoneyCog(Cog):
     async def give_money_if_call(self):
         for member_id in self.voice_people:
             # 지급 기준 변경 시 readme.md 수정 필요
-            add_money(member_id, 5)
+            add_money_with_tax(member_id, 5)
 
     @tasks.loop(minutes=1)
     async def today_statistics(self):
@@ -99,6 +148,10 @@ class MoneyCog(Cog):
         text_channel = self.bot.get_channel(get_const('channel.general'))
 
         await text_channel.send(f'# `{previous.date()}`의 통계\n{await self.generate_today_statistics()}')
+
+        # collect taxes if it's first day of the month
+        if last_record.day == 1:
+            await self.collect_taxes()
 
         # reset
         set_value('today_messages', 0)
@@ -363,9 +416,10 @@ class MoneyCog(Cog):
         # process sell
         delta = price * amount
         set_inventory(ctx.user.id, item, having - amount, price)
-        add_money(ctx.user.id, delta)
+        non_tax, tax = add_money_with_tax(ctx.user.id, delta)
+        tax_message = generate_tax_message(tax)
         content = f'__{item}__{eul_reul(item)} __{amount}개__ 판매하여 __**{delta / 100:,.2f} Ł**__를 얻었습니다. ' \
-                  f'현재 소지금은 __{get_money(ctx.user.id) / 100:,.2f} Ł__입니다.'
+                  f'{tax_message}현재 소지금은 __{get_money(ctx.user.id) / 100:,.2f} Ł__입니다.'
 
         if message is None:
             await ctx.response.send_message(content)
@@ -380,6 +434,53 @@ class MoneyCog(Cog):
                           filter(lambda x: current.lower() in x[0].lower(), inventory.items())))
 
         return result
+
+    @tax_group.command(description='미납 세금을 확인합니다.', name='check')
+    async def tax_check(self, ctx: Interaction):
+        # if there is no tax
+        tax_amount = get_tax(ctx.user.id)
+        if tax_amount <= 0:
+            try:
+                name = ctx.user.nick
+            except AttributeError:
+                name = ctx.user.name
+            await ctx.response.send_message(f'현재 __{name}__님 앞으로 미납된 세금이 없습니다.', ephemeral=True)
+            return
+
+        await ctx.response.send_message(
+            f'현재 __{ctx.user.nick}__님 앞으로 __**{tax_amount/100:,.2f} Ł**__가 미납되어 있습니다.', ephemeral=True)
+
+    @tax_group.command(description='세금을 납세합니다. 액수를 지정하지 않으면 최대한 많이 납세합니다.', name='pay')
+    async def tax_pay(self, ctx: Interaction, amount: float = 0.0):
+        # postprocess amount
+        amount = round(amount * 100)
+
+        # calculate `will_pay`
+        tax_amount = get_tax(ctx.user.id)
+        having: int = get_money(ctx.user.id)
+        if amount == 0.0:
+            amount = tax_amount
+        will_pay: int = min(tax_amount, amount)
+
+        # if will_pay is zero then do nothing
+        if will_pay <= 0:
+            await ctx.response.send_message(f'납부할 세금이 없거나 세금 액수가 잘못 입력되어 작업이 취소되었습니다.', ephemeral=True)
+            return
+
+        # if user has not enough money
+        if having < will_pay:
+            await ctx.response.send_message(
+                f'세금을 납세하기에 가진 돈이 충분하지 않습니다. __{will_pay / 100:,.2f} Ł__를 납세하도록 설정했고, '
+                f'현재 __**{having / 100:,.2f} Ł**__를 가지고 있습니다.',
+                ephemeral=True)
+            return
+
+        # process
+        add_money(ctx.user.id, -will_pay)
+        add_tax(ctx.user.id, -will_pay)
+        await ctx.response.send_message(
+            f'__**{will_pay / 100:,.2f} Ł**__를 납세했습니다. '
+            f'현재 미납 세금은 __{(tax_amount - will_pay) / 100:,.2f} Ł__입니다.')
 
 
 async def setup(bot):

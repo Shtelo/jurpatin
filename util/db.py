@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta, date
-from typing import Optional, Any
+from typing import Optional, Any, Generator
 
 from pymysql import connect, Connection
 
 from util import get_secret
 
-
 _get_connection_cache: Optional[Connection] = None
 _get_connection_last_used = None
+
+
 def get_connection():
     global _get_connection_cache, _get_connection_last_used
     now = datetime.now()
@@ -15,7 +16,7 @@ def get_connection():
     # if old connection
     if _get_connection_last_used is not None \
             and now - _get_connection_last_used > timedelta(hours=1) \
-            and _get_connection_cache is None:
+            and _get_connection_cache is not None:
         _get_connection_cache.close()
         _get_connection_cache = None
 
@@ -32,7 +33,7 @@ def get_connection():
     return _get_connection_cache
 
 
-def get_money(user_id: int) -> Optional[int]:
+def get_money(user_id: int) -> int:
     database = get_connection()
     with database.cursor() as cursor:
         cursor.execute('SELECT money FROM money WHERE id = %s', (user_id,))
@@ -114,6 +115,14 @@ def get_inventory(user_id: int) -> dict[str, tuple[int, int]]:
         return dict(map(lambda x: (x[0], (x[1], x[2])), cursor.fetchall()))
 
 
+def get_total_inventory_value(user_id) -> int:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT SUM(price * amount) FROM inventory WHERE id = %s', (user_id,))
+        data = cursor.fetchone()
+    return int(data[0] if data[0] is not None else 0)
+
+
 def set_inventory(user_id: int, name: str, amount: int, price: int = 0) -> None:
     database = get_connection()
     with database.cursor() as cursor:
@@ -173,6 +182,48 @@ def get_streak_rank() -> tuple[tuple[int, int]]:
         return cursor.fetchall()
 
 
+def get_tax(user_id: int) -> int:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT tax FROM money WHERE id = %s', (user_id,))
+        data = cursor.fetchone()
+    return 0 if data is None else data[0]
+
+
+def add_tax(user_id: int, amount: int):
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO money (id, tax) VALUES (%s, %s) '
+                       'ON DUPLICATE KEY UPDATE tax = tax + %s',
+                       (user_id, amount, amount))
+        database.commit()
+
+
+def add_money_with_tax(user_id: int, amount: int) -> tuple[int, int]:
+    """
+    proceeds tax paying and give money.
+
+    :param user_id:
+    :param amount:
+    :return: non_tax amount and tax amount
+    """
+
+    tax = min(round(amount * 0.3), get_tax(user_id))
+    non_tax = amount - tax
+
+    add_tax(user_id, -tax)
+    add_money(user_id, non_tax)
+
+    return non_tax, tax
+
+
+def get_everyone_id() -> Generator[int, None, None]:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT id FROM money')
+        while (row := cursor.fetchone()) is not None:
+            yield row[0]
+
+
 if __name__ == '__main__':
-    from datetime import timedelta
     set_value('test', timedelta(seconds=1239487))
