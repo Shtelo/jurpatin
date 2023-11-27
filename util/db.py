@@ -5,9 +5,10 @@ from pymysql import connect, Connection
 
 from util import get_secret
 
-
 _get_connection_cache: Optional[Connection] = None
 _get_connection_last_used = None
+
+
 def get_connection():
     global _get_connection_cache, _get_connection_last_used
     now = datetime.now()
@@ -173,6 +174,22 @@ def get_streak_rank() -> tuple[tuple[int, int]]:
         return cursor.fetchall()
 
 
+def get_tax(user_id: int) -> int:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT tax FROM tax WHERE user_id = %s', (user_id,))
+        data = cursor.fetchone()
+    return 0 if data is None else data[0]
+
+
+def add_tax(user_id: int, amount: int):
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO tax (user_id, tax) VALUES (%s, %s) '
+                       'ON DUPLICATE KEY UPDATE tax = tax + %s',
+                       (user_id, amount, amount))
+        database.commit()
+
+
 if __name__ == '__main__':
-    from datetime import timedelta
     set_value('test', timedelta(seconds=1239487))

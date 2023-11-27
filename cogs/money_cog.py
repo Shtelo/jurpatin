@@ -10,13 +10,15 @@ from discord.ext.commands import Cog, Bot
 
 from cogs.admin_cog import OX_EMOJIS
 from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction
-from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory
+from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory, \
+    get_tax, add_tax
 
 MONEY_CHECK_FEE = 50
 
 
 class MoneyCog(Cog):
     item_group = Group(name='item', description='인벤토리와 아이템 관련 명령어입니다.')
+    tax_group = Group(name='tax', description='세금과 관련된 명령어입니다.')
 
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -379,6 +381,49 @@ class MoneyCog(Cog):
                           filter(lambda x: current.lower() in x[0].lower(), inventory.items())))
 
         return result
+
+    @tax_group.command(description='미납 세금을 확인합니다.', name='check')
+    async def tax_check(self, ctx: Interaction):
+        # if there is no tax
+        tax_amount = get_tax(ctx.user.id)
+        if tax_amount <= 0:
+            await ctx.response.send_message(f'현재 __{ctx.user.nick}__님 앞으로 미납된 세금이 없습니다.', ephemeral=True)
+            return
+
+        await ctx.response.send_message(
+            f'현재 __{ctx.user.nick}__님 앞으로 __**{tax_amount/100:,.2f} Ł**__가 미납되어 있습니다.', ephemeral=True)
+
+    @tax_group.command(description='세금을 납세합니다. 액수를 지정하지 않으면 최대한 많이 납세합니다.', name='pay')
+    async def tax_pay(self, ctx: Interaction, amount: float = 0.0):
+        # postprocess amount
+        amount = round(amount * 100)
+
+        # calculate `will_pay`
+        tax_amount = get_tax(ctx.user.id)
+        having: int = get_money(ctx.user.id)
+        if amount == 0.0:
+            amount = tax_amount
+        will_pay: int = min(tax_amount, amount)
+
+        # if will_pay is zero then do nothing
+        if will_pay <= 0:
+            await ctx.response.send_message(f'납부할 세금이 없거나 세금 액수가 잘못 입력되어 작업이 취소되었습니다.', ephemeral=True)
+            return
+
+        # if user has not enough money
+        if having < will_pay:
+            await ctx.response.send_message(
+                f'세금을 납세하기에 가진 돈이 충분하지 않습니다. __{will_pay / 100:,.2f} Ł__를 납세하도록 설정했고, '
+                f'현재 __**{having / 100:,.2f} Ł**__를 가지고 있습니다.',
+                ephemeral=True)
+            return
+
+        # process
+        add_money(ctx.user.id, -will_pay)
+        add_tax(ctx.user.id, -will_pay)
+        await ctx.response.send_message(
+            f'__**{will_pay / 100:,.2f} Ł**__를 납세했습니다. '
+            f'현재 미납 세금은 __{(tax_amount - will_pay) / 100:,.2f} Ł__입니다.')
 
 
 async def setup(bot):
