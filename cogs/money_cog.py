@@ -11,9 +11,33 @@ from discord.ext.commands import Cog, Bot
 from cogs.admin_cog import OX_EMOJIS
 from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction, generate_tax_message
 from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory, \
-    get_tax, add_tax, add_money_with_tax
+    get_tax, add_tax, add_money_with_tax, get_everyone_id, get_total_inventory_value
 
 MONEY_CHECK_FEE = 50
+
+
+def get_asset(user_id):
+    wallet = get_money(user_id)
+
+    inventory = get_total_inventory_value(user_id)
+
+    ppl_price = int(get_value(get_const('db.ppl'))) * 100
+    ppl_having, _ = get_inventory(user_id).get(get_const('db.ppl_having'), (0, 0))
+    ppls = ppl_having * ppl_price
+
+    tax = get_tax(user_id)
+
+    return wallet + inventory + ppls - tax
+
+
+def calculate_tax(x: float) -> float:
+    """
+    :param x: asset amount in centilos
+    :return: tax in centilos
+    """
+    x /= 100
+    result = (x - 1_000_000 * (1 - pow(0.999, 0.9 * x / 1000))) * 100
+    return float(result)
 
 
 class MoneyCog(Cog):
@@ -26,6 +50,29 @@ class MoneyCog(Cog):
         self.today_people = set()
         self.message_logs: dict[int, int] = dict()
         self.voice_people = set()
+
+    async def collect_taxes(self):
+        tasks_ = list()
+        for member_id in get_everyone_id():
+            asset = get_asset(member_id)
+            tax = calculate_tax(asset)
+            tax_rate = tax / asset
+
+            add_tax(member_id, round(tax))
+
+            member = self.bot.get_user(member_id)
+
+            embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.name}님께')
+            embed.add_field(name='자산 인정액', value=f'{asset / 100:,.2f} Ł')
+            embed.add_field(name='자산 인정액에 대한 세율', value=f'{tax_rate * 100:,.2f}%')
+            embed.add_field(name='세금', value=f'**{tax / 100:,.2f} Ł**')
+            tasks_.append(member.send(
+                '월 1일이 되어, 저번달 세금 명세서가 도착했습니다.\n'
+                '`/tax check`를 통해 현재 미납된 세금의 액수를 확인할 수 있고, '
+                '`/tax pay`를 통해 세금을 납부할 수 있습니다. '
+                '세금을 납부하지 않으면 로스화 지급 시 지급액의 일정 부분을 자동으로 징수하여 지급합니다.', embed=embed))
+
+        await wait(tasks_)
 
     @Cog.listener()
     async def on_ready(self):
@@ -101,6 +148,10 @@ class MoneyCog(Cog):
         text_channel = self.bot.get_channel(get_const('channel.general'))
 
         await text_channel.send(f'# `{previous.date()}`의 통계\n{await self.generate_today_statistics()}')
+
+        # collect taxes if it's first day of the month
+        if last_record.day == 1:
+            await self.collect_taxes()
 
         # reset
         set_value('today_messages', 0)
@@ -388,7 +439,11 @@ class MoneyCog(Cog):
         # if there is no tax
         tax_amount = get_tax(ctx.user.id)
         if tax_amount <= 0:
-            await ctx.response.send_message(f'현재 __{ctx.user.nick}__님 앞으로 미납된 세금이 없습니다.', ephemeral=True)
+            try:
+                name = ctx.user.nick
+            except AttributeError:
+                name = ctx.user.name
+            await ctx.response.send_message(f'현재 __{name}__님 앞으로 미납된 세금이 없습니다.', ephemeral=True)
             return
 
         await ctx.response.send_message(

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, date
-from typing import Optional, Any
+from typing import Optional, Any, Generator
 
 from pymysql import connect, Connection
 
@@ -33,7 +33,7 @@ def get_connection():
     return _get_connection_cache
 
 
-def get_money(user_id: int) -> Optional[int]:
+def get_money(user_id: int) -> int:
     database = get_connection()
     with database.cursor() as cursor:
         cursor.execute('SELECT money FROM money WHERE id = %s', (user_id,))
@@ -115,6 +115,14 @@ def get_inventory(user_id: int) -> dict[str, tuple[int, int]]:
         return dict(map(lambda x: (x[0], (x[1], x[2])), cursor.fetchall()))
 
 
+def get_total_inventory_value(user_id) -> int:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT SUM(price * amount) FROM inventory WHERE id = %s', (user_id,))
+        data = cursor.fetchone()
+    return int(data[0] if data[0] is not None else 0)
+
+
 def set_inventory(user_id: int, name: str, amount: int, price: int = 0) -> None:
     database = get_connection()
     with database.cursor() as cursor:
@@ -177,7 +185,7 @@ def get_streak_rank() -> tuple[tuple[int, int]]:
 def get_tax(user_id: int) -> int:
     database = get_connection()
     with database.cursor() as cursor:
-        cursor.execute('SELECT tax FROM tax WHERE user_id = %s', (user_id,))
+        cursor.execute('SELECT tax FROM money WHERE id = %s', (user_id,))
         data = cursor.fetchone()
     return 0 if data is None else data[0]
 
@@ -185,7 +193,7 @@ def get_tax(user_id: int) -> int:
 def add_tax(user_id: int, amount: int):
     database = get_connection()
     with database.cursor() as cursor:
-        cursor.execute('INSERT INTO tax (user_id, tax) VALUES (%s, %s) '
+        cursor.execute('INSERT INTO money (id, tax) VALUES (%s, %s) '
                        'ON DUPLICATE KEY UPDATE tax = tax + %s',
                        (user_id, amount, amount))
         database.commit()
@@ -207,6 +215,14 @@ def add_money_with_tax(user_id: int, amount: int) -> tuple[int, int]:
     add_money(user_id, non_tax)
 
     return non_tax, tax
+
+
+def get_everyone_id() -> Generator[int, None, None]:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT id FROM money')
+        while (row := cursor.fetchone()) is not None:
+            yield row[0]
 
 
 if __name__ == '__main__':
