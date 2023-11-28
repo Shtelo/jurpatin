@@ -491,6 +491,18 @@ class MoneyCog(Cog):
             f'__**{will_pay / 100:,.2f} Ł**__를 납세했습니다. '
             f'현재 미납 세금은 __{(tax_amount - will_pay) / 100:,.2f} Ł__입니다.')
 
+    @tax_group.command(description='주어진 액수에 대한 세금을 확인합니다. 액수를 지정하지 않으면 총 자산에 대한 세금을 확인합니다.', name='calculate')
+    async def tax_calculate(self, ctx: Interaction, amount: float = 0.0):
+        amount *= 100
+
+        if amount <= 0.0:
+            amount = get_asset(ctx.user.id)
+
+        tax = calculate_tax(amount)
+        await ctx.response.send_message(f'__{amount / 100:,.2f} Ł__에 대한 세율은 __{tax / amount * 100:.2f}%__로, '
+                                        f'세금은 __**{tax / 100:,.2f} Ł/월**__입니다.',
+                                        ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(MoneyCog(bot))
