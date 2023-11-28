@@ -65,7 +65,8 @@ class MoneyCog(Cog):
 
             member = self.bot.get_user(member_id)
 
-            embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.name}님께')
+            embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.name}님께',
+                          colour=get_const('color.lofanfashasch'))
             embed.add_field(name='자산 인정액', value=f'{asset / 100:,.2f} Ł')
             embed.add_field(name='자산 인정액에 대한 세율', value=f'{tax_rate * 100:,.2f}%')
             embed.add_field(name='세금', value=f'**{tax / 100:,.2f} Ł**')
