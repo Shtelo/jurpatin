@@ -272,8 +272,7 @@ class MoneyCog(Cog):
 
     @command(description=f'소지금을 확인합니다. '
                          f'다른 사람의 소지금을 확인할 때에는 {MONEY_CHECK_FEE / 100:,.2f} Ł의 수수료가 부과됩니다.')
-    async def money(self, ctx: Interaction, member: Optional[Member] = None, total: bool = False,
-                    ephemeral: bool = True):
+    async def money(self, ctx: Interaction, member: Optional[Member] = None, ephemeral: bool = True):
         if member is None:
             member = ctx.user
 
@@ -294,17 +293,24 @@ class MoneyCog(Cog):
 
         # ppl
         ppl_message = ''
-        total_message = ''
         ppl_having, _ = get_inventory(member.id).get(get_const('db.ppl_having'), (0, 0))
-        if total and ppl_having > 0:
+        ppl_money = 0
+        if ppl_having > 0:
             ppl_price = int(get_value(get_const('db.ppl'))) * 100
             ppl_money = ppl_having * ppl_price
-            ppl_message = f'PPL은 __**{ppl_having}개**__를 가지고 있고, PPL 가격은 총 __{ppl_money / 100:,.2f} Ł__입니다.\n'
+            ppl_message = f'PPL은 __**{ppl_having}개**__를 가지고 있고, PPL 가격은 총 __{ppl_money / 100:,.2f} Ł__입니다. '
 
-            total_message = f'따라서 총자산은 __**{(having + ppl_money) / 100:,.2f} Ł**__입니다.\n'
+        # unpaid taxes
+        tax = get_tax(ctx.user.id)
+        tax_message = ''
+        if tax:
+            tax_message = f'미납 세금은 __**{tax / 100:,.2f} Ł**__입니다. '
 
-        await ctx.response.send_message(f'{feed}__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다.\n'
-                                        f'{ppl_message}{total_message}', ephemeral=ephemeral)
+        total_message = f'따라서 총자산은 __**{(having + ppl_money - tax) / 100:,.2f} Ł**__입니다. '
+
+        await ctx.response.send_message(f'{feed}__{member}__님의 소지금은 __**{having / 100:,.2f} Ł**__입니다. '
+                                        f'{ppl_message}{tax_message}\n'
+                                        f'{total_message}', ephemeral=ephemeral)
 
     @command(description='돈을 송금합니다.')
     async def transfer(self, ctx: Interaction, to: Member, amount: float):
