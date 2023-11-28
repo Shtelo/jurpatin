@@ -35,6 +35,9 @@ def calculate_tax(x: float) -> float:
     :param x: asset amount in centilos
     :return: tax in centilos
     """
+    if x <= 0:
+        return 0.0
+
     x /= 100
     result = (x - 1_000_000 * (1 - pow(0.999, 0.9 * x / 1000))) * 100
     return float(result)
