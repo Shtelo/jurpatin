@@ -56,7 +56,6 @@ class MoneyCog(Cog):
         self.voice_people = set()
 
     async def collect_taxes(self):
-        tasks_ = list()
         for member_id in get_everyone_id():
             asset = get_asset(member_id)
             tax = calculate_tax(asset)
@@ -71,13 +70,12 @@ class MoneyCog(Cog):
             embed.add_field(name='자산 인정액', value=f'{asset / 100:,.2f} Ł')
             embed.add_field(name='자산 인정액에 대한 세율', value=f'{tax_rate * 100:,.2f}%')
             embed.add_field(name='세금', value=f'**{tax / 100:,.2f} Ł**')
-            tasks_.append(member.send(
+            await member.send(
                 '월 1일이 되어, 저번달 세금 명세서가 도착했습니다.\n'
                 '`/tax check`를 통해 현재 미납된 세금의 액수를 확인할 수 있고, '
                 '`/tax pay`를 통해 세금을 납부할 수 있습니다. '
-                '세금을 납부하지 않으면 로스화 지급 시 지급액의 일정 부분을 자동으로 징수하여 지급합니다.', embed=embed))
-
-        await wait(tasks_)
+                '세금을 납부하지 않으면 로스화 지급 시 지급액의 일정 부분을 자동으로 징수하여 지급합니다.', embed=embed)
+            await sleep(0)
 
     @Cog.listener()
     async def on_ready(self):
@@ -508,8 +506,9 @@ class MoneyCog(Cog):
     @has_role(get_const('role.harnavin'))
     @tax_group.command(description='세금을 징수합니다.', name='collect')
     async def tax_collect(self, ctx: Interaction):
+        await ctx.response.send_message('세금을 징수중입니다...', ephemeral=True)
         await self.collect_taxes()
-        await ctx.response.send_message('세금을 징수했습니다.', ephemeral=True)
+        await ctx.edit_original_response(content='세금을 징수했습니다.')
 
     @tax_collect.error
     async def new_lecture_error(self, ctx: Interaction, error: Exception):
