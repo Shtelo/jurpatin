@@ -4,7 +4,8 @@ from typing import Optional
 
 from discord import NotFound, Member, VoiceState, InteractionMessage, RawReactionActionEvent, Interaction, Embed, \
     VoiceChannel, Reaction
-from discord.app_commands import command, Choice, Group
+from discord.app_commands import command, Choice, Group, MissingRole
+from discord.app_commands.checks import has_role
 from discord.ext import tasks
 from discord.ext.commands import Cog, Bot
 
@@ -65,7 +66,7 @@ class MoneyCog(Cog):
 
             member = self.bot.get_user(member_id)
 
-            embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.name}님께',
+            embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.mention}님께',
                           colour=get_const('color.lofanfashasch'))
             embed.add_field(name='자산 인정액', value=f'{asset / 100:,.2f} Ł')
             embed.add_field(name='자산 인정액에 대한 세율', value=f'{tax_rate * 100:,.2f}%')
@@ -504,6 +505,17 @@ class MoneyCog(Cog):
                                         f'세금은 __**{tax / 100:,.2f} Ł/월**__입니다.',
                                         ephemeral=True)
 
+    @has_role(get_const('role.harnavin'))
+    @tax_group.command(description='세금을 징수합니다.', name='collect')
+    async def tax_collect(self, ctx: Interaction):
+        await self.collect_taxes()
+        await ctx.response.send_message('세금을 징수했습니다.', ephemeral=True)
+
+    @tax_collect.error
+    async def new_lecture_error(self, ctx: Interaction, error: Exception):
+        if isinstance(error, MissingRole):
+            await ctx.response.send_message(':x: 명령어를 사용하기 위한 권한이 부족합니다!')
+            return
 
 async def setup(bot):
     await bot.add_cog(MoneyCog(bot))
