@@ -449,7 +449,8 @@ class MoneyCog(Cog):
             return
 
         await ctx.response.send_message(
-            f'현재 __{ctx.user.nick}__님 앞으로 __**{tax_amount/100:,.2f} Ł**__가 미납되어 있습니다.', ephemeral=True)
+            f'현재 __{ctx.user.nick}__님 앞으로 __**{tax_amount/100:,.2f} Ł**__가 미납되어 있습니다. '
+            f'`/tax pay` 명령어를 사용하여 세금을 납부할 수 있습니다.', ephemeral=True)
 
     @tax_group.command(description='세금을 납세합니다. 액수를 지정하지 않으면 최대한 많이 납세합니다.', name='pay')
     async def tax_pay(self, ctx: Interaction, amount: float = 0.0):
