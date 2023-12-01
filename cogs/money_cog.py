@@ -56,14 +56,22 @@ class MoneyCog(Cog):
         self.voice_people = set()
 
     async def collect_taxes(self):
-        for member_id in get_everyone_id():
+        ids = list(get_everyone_id())
+        for i, member_id in enumerate(ids):
             asset = get_asset(member_id)
+
+            if asset <= 0:
+                continue
+
             tax = calculate_tax(asset)
             tax_rate = tax / asset
 
             add_tax(member_id, round(tax))
 
             member = self.bot.get_user(member_id)
+
+            if member is None:
+                continue
 
             embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.mention}님께',
                           colour=get_const('color.lofanfashasch'))
