@@ -83,6 +83,8 @@ class MoneyCog(Cog):
                 '`/tax check`를 통해 현재 미납된 세금의 액수를 확인할 수 있고, '
                 '`/tax pay`를 통해 세금을 납부할 수 있습니다. '
                 '세금을 납부하지 않으면 로스화 지급 시 지급액의 일정 부분을 자동으로 징수하여 지급합니다.', embed=embed)
+
+            print('세금 징수:', i, len(ids))
             await sleep(0)
 
     @Cog.listener()
