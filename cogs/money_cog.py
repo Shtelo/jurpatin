@@ -55,7 +55,8 @@ class MoneyCog(Cog):
         self.message_logs: dict[int, int] = dict()
         self.voice_people = set()
 
-    async def collect_taxes(self):
+    @staticmethod
+    async def collect_taxes():
         ids = list(get_everyone_id())
         for i, member_id in enumerate(ids):
             asset = get_asset(member_id)
@@ -64,28 +65,7 @@ class MoneyCog(Cog):
                 continue
 
             tax = calculate_tax(asset)
-            tax_rate = tax / asset
-
             add_tax(member_id, round(tax))
-
-            member = self.bot.get_user(member_id)
-
-            if member is None:
-                continue
-
-            embed = Embed(title='로판파샤스 로스 세금 명세서', description=f'{member.mention}님께',
-                          colour=get_const('color.lofanfashasch'))
-            embed.add_field(name='자산 인정액', value=f'{asset / 100:,.2f} Ł')
-            embed.add_field(name='자산 인정액에 대한 세율', value=f'{tax_rate * 100:,.2f}%')
-            embed.add_field(name='세금', value=f'**{tax / 100:,.2f} Ł**')
-            await member.send(
-                '월 1일이 되어, 저번달 세금 명세서가 도착했습니다.\n'
-                '`/tax check`를 통해 현재 미납된 세금의 액수를 확인할 수 있고, '
-                '`/tax pay`를 통해 세금을 납부할 수 있습니다. '
-                '세금을 납부하지 않으면 로스화 지급 시 지급액의 일정 부분을 자동으로 징수하여 지급합니다.', embed=embed)
-
-            print('세금 징수:', i, len(ids))
-            await sleep(0)
 
     @Cog.listener()
     async def on_ready(self):
@@ -165,6 +145,8 @@ class MoneyCog(Cog):
         # collect taxes if it's first day of the month
         if last_record.day == 1:
             await self.collect_taxes()
+            await text_channel.send(f'# 세금 징수 공지\n월 1일이 되어 세금이 징수되었습니다. '
+                                    f'`/tax check`를 통해 세금을 확인하고 `/tax pay`를 통해 세금을 납세해주세요. @everyone')
 
         # reset
         set_value('today_messages', 0)
