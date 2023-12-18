@@ -79,7 +79,8 @@ class MoneyCog(Cog):
         # track whether member is in voice channel
         if member.guild.id == get_const('guild.lofanfashasch'):
             if after.channel is None:
-                self.voice_people.remove(member.id)
+                if member.id in self.voice_people:
+                    self.voice_people.remove(member.id)
             if before.channel is None:
                 self.voice_people.add(member.id)
 
