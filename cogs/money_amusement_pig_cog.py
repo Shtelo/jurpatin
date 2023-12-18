@@ -67,7 +67,7 @@ class MoneyAmusementPigCog(Cog):
             await ctx.response.send_message(
                 f'돼지 게임을 시작하기 위한 소지금이 부족합니다! 소지금이 __{START_COST/100:,.2f} Ł__ 필요합니다.')
             return
-        add_money(ctx.user.id, START_COST)
+        add_money(ctx.user.id, -START_COST)
 
         # process game
         make_pig_row(ctx.user.id)
