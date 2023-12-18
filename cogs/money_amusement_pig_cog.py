@@ -70,6 +70,7 @@ class MoneyAmusementPigCog(Cog):
         add_money(ctx.user.id, START_COST)
 
         # process game
+        make_pig_row(ctx.user.id)
         score = 0
         template = f'현재 점수는 0점입니다. 주사위를 굴리시겠습니까? (60초)'
         await ctx.response.send_message(template.format(score))
