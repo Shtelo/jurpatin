@@ -128,10 +128,12 @@ class MoneyAmusementPigCog(Cog):
     async def score(self, ctx: Interaction):
         score = get_pig_score(ctx.user.id)
         if score is None:
-            await ctx.response.send_message(f'__{ctx.user.display_name}__님은 돼지게임을 플레이한 적이 없습니다.')
+            await ctx.response.send_message(
+                f'__{ctx.user.display_name}__님은 돼지게임을 플레이한 적이 없습니다.', ephemeral=True)
             return
 
-        await ctx.response.send_message(f'__{ctx.user.display_name}__님의 돼지 게임 최고 점수는 __**{score}**__점입니다.')
+        await ctx.response.send_message(
+            f'__{ctx.user.display_name}__님의 돼지 게임 최고 점수는 __**{score}**__점입니다.', ephemeral=True)
 
 
 async def setup(bot):
