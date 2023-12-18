@@ -1,7 +1,7 @@
 from asyncio import wait, TimeoutError as AsyncioTimeoutError
 from datetime import datetime
 from random import randint
-from typing import Any
+from typing import Any, Optional
 
 from discord import app_commands, Interaction, InteractionMessage
 from discord.ext.commands import Cog, Bot
@@ -41,6 +41,14 @@ def get_rank() -> tuple[tuple[int, int, ...], ...]:
     with database.cursor() as cursor:
         cursor.execute('SELECT user_id, score FROM pig ORDER BY score DESC LIMIT 10')
         return cursor.fetchall()
+
+
+def get_pig_score(user_id: int) -> Optional[int]:
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('SELECT score FROM pig WHERE user_id = %s', (user_id,))
+        data = cursor.fetchone()
+    return data[0] if data is not None else None
 
 
 class MoneyAmusementPigCog(Cog):
@@ -115,6 +123,15 @@ class MoneyAmusementPigCog(Cog):
                 user = user.display_name
             contents.append(f'1. {user}: {score}점')
         await ctx.response.send_message(f'돼지 게임 최고점수표 ({datetime.now()})\n' + '\n'.join(contents))
+
+    @pig_group.command(name='score', description='돼지게임 점수를 확인합니다.')
+    async def score(self, ctx: Interaction):
+        score = get_pig_score(ctx.user.id)
+        if score is None:
+            await ctx.response.send_message(f'__{ctx.user.display_name}__님은 돼지게임을 플레이한 적이 없습니다.')
+            return
+
+        await ctx.response.send_message(f'__{ctx.user.display_name}__님의 돼지 게임 최고 점수는 __**{score}**__점입니다.')
 
 
 async def setup(bot):
