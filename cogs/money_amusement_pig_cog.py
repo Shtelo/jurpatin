@@ -26,14 +26,14 @@ def make_pig_row(user_id: int):
     database = get_connection()
     with database.cursor() as cursor:
         cursor.execute('INSERT IGNORE INTO pig(user_id) VALUES (%s)', (user_id,))
-    database.commit()
+        database.commit()
 
 
 def update_pig_score(user_id: int, score: int):
     database = get_connection()
     with database.cursor() as cursor:
         cursor.execute('UPDATE pig SET score = %s WHERE user_id = %s AND score > %s', (score, user_id, score))
-    database.commit()
+        database.commit()
 
 
 def get_rank() -> tuple[tuple[int, int, ...], ...]:
