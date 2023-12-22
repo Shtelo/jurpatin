@@ -4,11 +4,11 @@ from pprint import pformat
 from typing import Optional
 
 from discord import Interaction, app_commands, Embed
-from discord.app_commands import command
+from discord.app_commands import command, Choice
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Cog
 
-from util import get_const
+from util import get_const, get_exchange_rates, eun_neun, exchangeable_currencies
 
 
 class Reminder:
@@ -123,6 +123,41 @@ class UtilCog(Cog):
 
         await ctx.response.send_message(f'총 __{len(reminders)}개__의 리마인더가 있습니다.\n' + '\n'.join(messages),
                                         ephemeral=True)
+
+    @command(name='exchange', description='한국 원(KRW)을 다른 단위의 돈으로 환전합니다.')
+    async def exchange(self, ctx: Interaction, currency: str, amount: float = 0.0):
+        exchange_rates = get_exchange_rates()
+
+        if currency not in exchange_rates:
+            await ctx.response.send_message(f'화폐 `{currency}`에 대한 환전 정보를 확인할 수 없습니다.')
+            return
+
+        rate = exchange_rates[currency]
+        if currency.endswith('(100)'):
+            rate /= 100
+            currency = currency[:-5]
+
+        message = f'__1 {currency}__{eun_neun(currency)} __{rate:,.2f} 원__입니다. '
+
+        if amount > 0:
+            message += f'__{amount:,.2f} {currency}__{eun_neun(currency)} __**{rate * amount:,.2f} 원**__입니다.'
+
+        await ctx.response.send_message(message)
+
+    @exchange.autocomplete("currency")
+    async def sell_autocomplete(self, ctx: Interaction, current: str) -> list[Choice[str]]:
+        candidates = list()
+        for currency in exchangeable_currencies:
+            if current.upper() not in currency.upper():
+                continue
+
+            name = currency
+            if currency.endswith('(100)'):
+                name = currency[:-5]
+
+            candidates.append(Choice(name=name, value=currency))
+
+        return candidates
 
 
 async def setup(bot):

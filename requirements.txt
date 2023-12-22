@@ -2,3 +2,4 @@ discord==2.3.0
 sat-datetime~=1.0.1
 PyMySQL~=1.0.3
 pytimeparse~=1.1.8
+requests~=2.31.0
