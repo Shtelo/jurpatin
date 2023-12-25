@@ -3,7 +3,6 @@ from asyncio import sleep, TimeoutError as AsyncioTimeoutError
 from datetime import datetime, timedelta, timezone, date
 from math import inf, exp
 from random import randint, shuffle
-from typing import Union
 
 from discord import app_commands, Interaction, Member, Embed, Message
 from discord.app_commands import command
@@ -645,7 +644,7 @@ class MoneyAmusementsCog(Cog):
         add_money(ctx.user.id, -price)
 
         # make lottery
-        lottery: list[Union[tuple, int]] = list(range(5))
+        lottery = list(range(5))
         shuffle(lottery)
 
         for i in range(5):
