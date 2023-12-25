@@ -160,3 +160,4 @@ cython_debug/
 .idea/
 
 res/secret.json
+res/go/tmp.png
