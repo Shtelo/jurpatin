@@ -82,18 +82,23 @@ def draw_board(content: str, last: int = -1) -> Board:
     return board
 
 
+LABEL_COLOR = (44, 44, 44)
+BOARD_IMAGE_WIDTH = (SIDE + 2) * IMAGE_SIDE
+BOARD_IMAGE_HEIGHT = (SIDE + 3) * IMAGE_SIDE
+
+
 def create_image(board: str, last: int = -1, id_: int = -1) -> Image:
-    image = Image.new("RGB", ((SIDE + 2) * IMAGE_SIDE, (SIDE + 2) * IMAGE_SIDE), '#eac159')
+    image = Image.new("RGB", (BOARD_IMAGE_WIDTH, BOARD_IMAGE_HEIGHT), '#eac159')
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype('res/font/Pretendard-Light_0.otf', 64)
 
     # write id
     if id_ != -1:
-        text = f'{id_}'
+        text = f'바둑판 #{id_}'
         w = draw.textlength(text, font)
-        dx = round((IMAGE_SIDE - w) / 2)
+        dx = round((BOARD_IMAGE_WIDTH - w) / 2)
         dy = round((IMAGE_SIDE - 64) / 2)
-        draw.text((dx, dy), text, (0, 0, 0), font)
+        draw.text((dx, (SIDE + 2) * IMAGE_SIDE + dy), text, LABEL_COLOR, font)
 
     # write label
     for i in range(SIDE):
@@ -101,15 +106,15 @@ def create_image(board: str, last: int = -1, id_: int = -1) -> Image:
         w = draw.textlength(text, font)
         dx = round((IMAGE_SIDE - w) / 2)
         dy = round((IMAGE_SIDE - 64) / 2)
-        draw.text(((i + 1) * IMAGE_SIDE + dx, 0 + dy), text, (0, 0, 0), font)
-        draw.text(((i + 1) * IMAGE_SIDE + dx, 20 * IMAGE_SIDE + dy), text, (0, 0, 0), font)
+        draw.text(((i + 1) * IMAGE_SIDE + dx, 0 + dy), text, LABEL_COLOR, font)
+        draw.text(((i + 1) * IMAGE_SIDE + dx, 20 * IMAGE_SIDE + dy), text, LABEL_COLOR, font)
 
         text = str(SIDE - i)
         w = draw.textlength(text, font)
         dx = round((IMAGE_SIDE - w) / 2)
         dy = round((IMAGE_SIDE - 64) / 2)
-        draw.text((dx, (i + 1) * IMAGE_SIDE + dy), text, (0, 0, 0), font)
-        draw.text((dx + 20 * IMAGE_SIDE, (i + 1) * IMAGE_SIDE + dy), text, (0, 0, 0), font)
+        draw.text((dx, (i + 1) * IMAGE_SIDE + dy), text, LABEL_COLOR, font)
+        draw.text((dx + 20 * IMAGE_SIDE, (i + 1) * IMAGE_SIDE + dy), text, LABEL_COLOR, font)
 
     # draw dots
     board = draw_board(board, last)
