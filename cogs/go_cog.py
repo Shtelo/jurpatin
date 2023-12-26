@@ -1,10 +1,7 @@
 from copy import copy
-from random import random
-from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
 from discord import app_commands, Interaction, File
-from discord.app_commands import Choice
 from discord.ext.commands import Cog, Bot
 
 from util import eul_reul
@@ -28,6 +25,10 @@ GO_WHITE = Image.open('res/go/gow.png')
 GO_BLACK_PREVIOUS = Image.open('res/go/gobp.png')
 GO_WHITE_PREVIOUS = Image.open('res/go/gowp.png')
 GO_NONE = Image.open('res/go/gon.png')
+
+BLACK = 'b'
+WHITE = 'w'
+NONE = ' '
 
 Board = list[list[Image]]
 
@@ -71,9 +72,9 @@ def draw_board(content: str, last: int = -1) -> Board:
         y = i // SIDE
         x = i % SIDE
 
-        if content[i] == 'w':
+        if content[i] == WHITE:
             board[y][x] = GO_WHITE_PREVIOUS if last == i else GO_WHITE
-        elif content[i] == 'b':
+        elif content[i] == BLACK:
             board[y][x] = GO_BLACK_PREVIOUS if last == i else GO_BLACK
 
     return board
@@ -173,6 +174,22 @@ def parse_place(place: str):
     return x, y
 
 
+def parse_color(raw: str):
+    if len(raw) < 1:
+        return None
+
+    if raw[0].lower() in ['흑', 'ㅎ', 'g', 'b', 'm']:
+        return BLACK
+
+    if raw[0].lower() in ['백', 'ㅂ', 'q', 'w', ';']:
+        return WHITE
+
+    if raw[0].lower() in ['없', 'ㅇ', 'd', 'j', 'n']:
+        return NONE
+
+    return None
+
+
 class GoCog(Cog):
     go_group = app_commands.Group(name="go", description="바둑판과 관련된 명령어입니다.")
 
@@ -205,6 +222,12 @@ class GoCog(Cog):
             await ctx.response.send_message('입력한 위치가 올바르지 않습니다.', ephemeral=True)
             return
 
+        color = parse_color(color)
+        if color not in [WHITE, BLACK, NONE]:
+            await ctx.response.send_message('입력한 색이 올바르지 않습니다. '
+                                            '색은 `흑`(`B`), `백`(`W`), `없`(`N`) 중에 하나를 선택하세요.', ephemeral=True)
+            return
+
         board = change_single(board, y, x, color)
         changes += 1
         update_board_by_id(id_, board, y * SIDE + x, changes, ctx.user.id)
@@ -212,16 +235,16 @@ class GoCog(Cog):
         image = create_image(board, y * SIDE + x, id_)
         image.save('res/go/tmp.png')
 
-        color = '흑' if color == 'b' else '백' if color == 'w' else 'undefined'
+        if color == WHITE:
+            color = '백'
+        elif color == BLACK:
+            color = '흑'
+        else:
+            color = 'undefined'
+
         await ctx.response.send_message(
             f'__{ctx.user.name}__님이 __{id_}번 바둑판 **{place.upper()}**__에 __{color}__{eul_reul(color)} 착수했습니다.',
             file=File('res/go/tmp.png', f'go_{id_}_{changes}.png'))
-
-    @put.autocomplete('color')
-    async def color(self, _ctx: Interaction, _current: str) -> list[Choice]:
-        return [Choice(name='흑 Black', value='b'),
-                Choice(name='백 White', value='w'),
-                Choice(name='없애기 None', value=' ')]
 
     @go_group.command(name='clear', description='바둑판을 초기화합니다.')
     async def clear(self, ctx: Interaction, id_: int = 0):
