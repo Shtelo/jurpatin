@@ -219,7 +219,7 @@ class GoCog(Cog):
             attachments=[File('res/go/tmp.png', f'go_{id_}_{changes}.png')])
 
     @go_group.command(name='put', description='바둑판에 착수합니다.')
-    async def put(self, ctx: Interaction, color: str, place: str, id_: int = 0):
+    async def put(self, ctx: Interaction, color: str, id_: int, place: str):
         board, last, changes, _ = get_board_by_id(id_)
 
         x, y = parse_place(place)
