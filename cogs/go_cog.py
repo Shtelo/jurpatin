@@ -1,10 +1,10 @@
 from copy import copy
 
 from PIL import Image, ImageDraw, ImageFont
-from discord import app_commands, Interaction, File
+from discord import app_commands, Interaction, File, Embed, User
 from discord.ext.commands import Cog, Bot
 
-from util import eul_reul
+from util import eul_reul, get_const
 from util.db import get_connection
 
 SIDE = 19
@@ -199,6 +199,9 @@ class GoCog(Cog):
     @go_group.command(name='show', description='현재 바둑판을 확인합니다.')
     async def show(self, ctx: Interaction, id_: int = 0):
         board, last, changes, last_putter = get_board_by_id(id_)
+
+        await ctx.response.defer()
+
         image = create_image(board, last, id_)
         image.save('res/go/tmp.png')
 
@@ -209,9 +212,9 @@ class GoCog(Cog):
             if user is not None:
                 last_putter = f'마지막 착수는 __{user.name}__님입니다. '
 
-        await ctx.response.send_message(
-            f'__{id_}번__ 바둑판을 확인합니다. {last_putter}',
-            file=File('res/go/tmp.png', f'go_{id_}_{changes}.png'))
+        await ctx.edit_original_response(
+            content=f'__{id_}번__ 바둑판을 확인합니다. {last_putter}',
+            attachments=[File('res/go/tmp.png', f'go_{id_}_{changes}.png')])
 
     @go_group.command(name='put', description='바둑판에 착수합니다.')
     async def put(self, ctx: Interaction, color: str, place: str, id_: int = 0):
@@ -228,6 +231,8 @@ class GoCog(Cog):
                                             '색은 `흑`(`B`), `백`(`W`), `없`(`N`) 중에 하나를 선택하세요.', ephemeral=True)
             return
 
+        await ctx.response.defer()
+
         board = change_single(board, y, x, color)
         changes += 1
         update_board_by_id(id_, board, y * SIDE + x, changes, ctx.user.id)
@@ -242,21 +247,26 @@ class GoCog(Cog):
         else:
             color = 'undefined'
 
-        await ctx.response.send_message(
-            f'__{ctx.user.name}__님이 __{id_}번 바둑판 **{place.upper()}**__에 __{color}__{eul_reul(color)} 착수했습니다.',
-            file=File('res/go/tmp.png', f'go_{id_}_{changes}.png'))
+        filename = f'go_{id_}_{changes}.png'
+        await ctx.edit_original_response(
+            content=f'__{ctx.user.name}__님이 __{id_}번 바둑판 **{place.upper()}**__에 __{color}__{eul_reul(color)} 착수했습니다.',
+            attachments=[File('res/go/tmp.png', filename)])
 
     @go_group.command(name='clear', description='바둑판을 초기화합니다.')
     async def clear(self, ctx: Interaction, id_: int = 0):
         board, last, changes, _ = get_board_by_id(id_)
+
+        await ctx.response.defer()
+
         changes += 1
         update_board_by_id(id_, '', -1, changes, id_)
 
         image = create_image('')
         image.save('res/go/tmp.png')
 
-        await ctx.response.send_message(
-            f'__{id_}번__ 바둑판을 초기화했습니다.', file=File('res/go/tmp.png', f'go_{id_}_{changes}.png'))
+        await ctx.edit_original_response(
+            content=f'__{id_}번__ 바둑판을 초기화했습니다.',
+            attachments=[File('res/go/tmp.png', f'go_{id_}_{changes}.png')])
 
 
 async def setup(bot: Bot):
