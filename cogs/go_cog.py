@@ -1,10 +1,10 @@
 from copy import copy
 
 from PIL import Image, ImageDraw, ImageFont
-from discord import app_commands, Interaction, File, Embed, User
+from discord import app_commands, Interaction, File
 from discord.ext.commands import Cog, Bot
 
-from util import eul_reul, get_const
+from util import eul_reul
 from util.db import get_connection
 
 SIDE = 19
@@ -29,6 +29,8 @@ GO_NONE = Image.open('res/go/gon.png')
 BLACK = 'b'
 WHITE = 'w'
 NONE = ' '
+
+ALPHABET_ORDER = 'ABCDEFGHJKLMNOPQRST'
 
 Board = list[list[Image]]
 
@@ -87,7 +89,7 @@ def create_image(board: str, last: int = -1, id_: int = -1) -> Image:
 
     # write id
     if id_ != -1:
-        text = f'#{id_}'
+        text = f'{id_}'
         w = draw.textlength(text, font)
         dx = round((IMAGE_SIDE - w) / 2)
         dy = round((IMAGE_SIDE - 64) / 2)
@@ -95,14 +97,14 @@ def create_image(board: str, last: int = -1, id_: int = -1) -> Image:
 
     # write label
     for i in range(SIDE):
-        text = chr(ord('A') + i)
+        text = ALPHABET_ORDER[i]
         w = draw.textlength(text, font)
         dx = round((IMAGE_SIDE - w) / 2)
         dy = round((IMAGE_SIDE - 64) / 2)
         draw.text(((i + 1) * IMAGE_SIDE + dx, 0 + dy), text, (0, 0, 0), font)
         draw.text(((i + 1) * IMAGE_SIDE + dx, 20 * IMAGE_SIDE + dy), text, (0, 0, 0), font)
 
-        text = str(i+1)
+        text = str(SIDE - i)
         w = draw.textlength(text, font)
         dx = round((IMAGE_SIDE - w) / 2)
         dy = round((IMAGE_SIDE - 64) / 2)
@@ -150,17 +152,17 @@ def parse_place(place: str):
 
     place = place.upper()
 
-    x = 0
-    y = 0
+    x = -1
+    y = -1
 
-    if place[0] in 'ABCDEFGHIJKLMNOPQRS':
-        x = ord(place[0]) - ord('A')
+    if place[0] in ALPHABET_ORDER:
+        x = ALPHABET_ORDER.index(place[0])
         try:
             y = int(place[1:]) - 1
         except ValueError:
             y = -1
-    elif place[-1] in 'ABCDEFGHIJKLMNOPQRS':
-        x = ord(place[-1]) - ord('A')
+    elif place[-1] in ALPHABET_ORDER:
+        x = ALPHABET_ORDER.index(place[-1])
         try:
             y = int(place[:-1]) - 1
         except ValueError:
@@ -171,7 +173,7 @@ def parse_place(place: str):
     if not (0 <= y < SIDE):
         y = -1
 
-    return x, y
+    return x, SIDE - y - 1
 
 
 def parse_color(raw: str):
