@@ -19,7 +19,7 @@ DICE_EMOJI = [
     custom_emoji('die6', 1186274958796673086)
 ]
 
-START_COST = 1000_00  # cŁ
+START_COST = 100_00  # cŁ
 
 
 def make_pig_row(user_id: int):
