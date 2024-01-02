@@ -12,7 +12,7 @@ from discord.ext.commands import Cog, Bot
 from cogs.admin_cog import OX_EMOJIS
 from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction, generate_tax_message
 from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory, \
-    get_tax, add_tax, add_money_with_tax, get_everyone_id, get_total_inventory_value
+    get_tax, add_tax, add_money_with_tax, get_everyone_id, get_total_inventory_value, add_ppl_history
 
 MONEY_CHECK_FEE = 50
 
@@ -137,6 +137,7 @@ class MoneyCog(Cog):
         previous_ppl = int(get_value(get_const('db.ppl')))
         set_value(get_const('db.ppl'), str(len(self.today_people)))
         set_value(get_const('db.yesterday_ppl'), str(previous_ppl))
+        add_ppl_history(last_record.date(), len(self.today_people))
 
         # get server and send statistics message
         text_channel = self.bot.get_channel(get_const('channel.general'))

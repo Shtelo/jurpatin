@@ -225,5 +225,12 @@ def get_everyone_id() -> Generator[int, None, None]:
             yield row[0]
 
 
+def add_ppl_history(date_: date, value: int):
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO ppl_history VALUES (%s, %s)', (value, date_))
+        database.commit()
+
+
 if __name__ == '__main__':
     set_value('test', timedelta(seconds=1239487))
