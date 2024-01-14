@@ -44,13 +44,6 @@ def calculate_tax(x: float) -> float:
     return float(result)
 
 
-def get_issue() -> int:
-    issue = 0
-    for user_id in get_everyone_id():
-        issue += get_asset(user_id)
-    return issue
-
-
 class MoneyCog(Cog):
     item_group = Group(name='item', description='인벤토리와 아이템 관련 명령어입니다.')
     tax_group = Group(name='tax', description='세금과 관련된 명령어입니다.')
@@ -364,13 +357,6 @@ class MoneyCog(Cog):
 
         message = '\n'.join(strings)
         await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}', ephemeral=ephemeral)
-
-    @command(description='로스화 발행량을 확인합니다.')
-    async def issue(self, ctx: Interaction, ephemeral: bool = True):
-        await ctx.response.defer(ephemeral=ephemeral)
-        issue = get_issue()
-        await ctx.edit_original_response(content=f'로스화의 현재 총 발행량은 __**{issue/100:,.2f} Ł**__입니다. '
-                                                 f'({datetime.now()})')
 
     @item_group.command(description='소지품을 확인합니다.')
     async def inventory(self, ctx: Interaction):
