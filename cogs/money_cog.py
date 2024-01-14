@@ -366,8 +366,8 @@ class MoneyCog(Cog):
         await ctx.response.send_message(f'**돈 소지 현황** ({datetime.now()})\n{message}', ephemeral=ephemeral)
 
     @command(description='로스화 발행량을 확인합니다.')
-    async def issue(self, ctx: Interaction):
-        await ctx.response.defer()
+    async def issue(self, ctx: Interaction, ephemeral: bool = True):
+        await ctx.response.defer(ephemeral=ephemeral)
         issue = get_issue()
         await ctx.edit_original_response(content=f'로스화의 현재 총 발행량은 __**{issue/100:,.2f} Ł**__입니다. '
                                                  f'({datetime.now()})')
