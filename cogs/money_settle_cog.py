@@ -163,10 +163,6 @@ class MoneySettleCog(Cog):
         self.sessions.pop(ctx.user.id)
         await ctx.response.send_message(f'{ctx.user.mention}님의 정산 세션을 마무리했습니다.\n{logs}', embed=session.get_embed())
 
-    @settle_group.command(name='list', description='정산 세션의 목록을 확인합니다.')
-    async def list(self, ctx: Interaction):
-        await ctx.response.send_message(str(self.sessions.keys()))
-
 
 async def setup(bot: Bot):
     await bot.add_cog(MoneySettleCog(bot))
