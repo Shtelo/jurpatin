@@ -10,7 +10,7 @@ class SettleSession:
     def __init__(self, dealer: Member, multiplier: float):
         self.dealer = dealer
         self.multiplier = multiplier
-        self.values = dict()
+        self.values: dict[int, tuple[float, Member]] = dict()
 
     def join(self, member: Member, value: float):
         self.values[member.id] = (value, member)
@@ -35,7 +35,7 @@ class SettleSession:
 
         participants = list()
         moxes = self.get_moxes()
-        for value, participant in sorted(self.values.values(), reverse=True):
+        for value, participant in sorted(map(lambda x: x[0], self.values.values()), reverse=True):
             mox = moxes.get(participant.id, None)
             participants.append(f'* {participant.mention}, {value:,.2f}: {mox:,.2f} Ł')
         if participants:
