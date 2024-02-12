@@ -1,9 +1,9 @@
-from asyncio import tasks, sleep
+from asyncio import sleep
 from datetime import date, datetime, timedelta
 from pprint import pformat
 from typing import Optional
 
-from discord import Interaction, app_commands, Embed
+from discord import Interaction, app_commands
 from discord.app_commands import command, Choice
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Cog

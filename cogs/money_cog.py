@@ -166,6 +166,13 @@ class MoneyCog(Cog):
         self.today_people.clear()
 
     async def voice_channel_notification(self, member: Member, before: VoiceState, after: VoiceState):
+        # general notification
+        if after.channel is not None and after.channel != before.channel:
+            await after.channel.send(f'`{member.name}`님이 {after.channel.mention}에 들어왔습니다.')
+        if before.channel is not None and before.channel != after.channel:
+            await before.channel.send(f'`{member.name}`님이 {before.channel.mention}에서 나갔습니다.')
+
+        # lofanfashasch filter
         if member.guild.id != get_const('guild.lofanfashasch'):
             return
 
@@ -208,7 +215,8 @@ class MoneyCog(Cog):
         else:
             mention_string = ""
 
-        message = await text_channel.send(f'{member.mention}님이 {after.channel.mention} 채널을 활성화했습니다. {mention_string}')
+        content = f'{member.mention}님이 {after.channel.mention} 채널을 활성화했습니다. {mention_string}'
+        message = await text_channel.send(content)
         self.message_logs[after.channel.id] = message.id
 
         today_calls = int(get_value('today_calls'))
