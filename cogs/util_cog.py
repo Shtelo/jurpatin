@@ -145,7 +145,7 @@ class UtilCog(Cog):
         await ctx.response.send_message(message)
 
     @exchange.autocomplete("currency")
-    async def sell_autocomplete(self, ctx: Interaction, current: str) -> list[Choice[str]]:
+    async def sell_autocomplete(self, _: Interaction, current: str) -> list[Choice[str]]:
         candidates = list()
         for currency in exchangeable_currencies:
             if current.upper() not in currency.upper():
