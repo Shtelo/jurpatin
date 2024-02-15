@@ -168,9 +168,9 @@ class MoneyCog(Cog):
     async def voice_channel_notification(self, member: Member, before: VoiceState, after: VoiceState):
         # general notification
         if after.channel is not None and after.channel != before.channel:
-            await after.channel.send(f'`{member.name}`님이 {after.channel.mention}에 들어왔습니다.')
+            await after.channel.send(f'__{member.nick}__`@{member.name}`님이 {after.channel.mention}에 들어왔습니다.')
         if before.channel is not None and before.channel != after.channel:
-            await before.channel.send(f'`{member.name}`님이 {before.channel.mention}에서 나갔습니다.')
+            await before.channel.send(f'__{member.nick}__`@{member.name}`님이 {before.channel.mention}에서 나갔습니다.')
 
         # lofanfashasch filter
         if member.guild.id != get_const('guild.lofanfashasch'):
