@@ -208,7 +208,7 @@ def add_money_with_tax(user_id: int, amount: int) -> tuple[int, int]:
     :return: non_tax amount and tax amount
     """
 
-    tax = min(round(amount * 0.3), get_tax(user_id))
+    tax = min(round(amount * 0.9), get_tax(user_id))
     non_tax = amount - tax
 
     add_tax(user_id, -tax)

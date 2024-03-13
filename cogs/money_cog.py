@@ -345,10 +345,11 @@ class MoneyCog(Cog):
 
         # update database
         add_money(ctx.user.id, -amount)
-        add_money(to.id, amount)
+        non_tax, tax = add_money_with_tax(to.id, amount)
+        tax_message = generate_tax_message(tax)
 
         await ctx.response.send_message(
-            f'{ctx.user.mention}님이 {to.mention}님에게 __**{amount / 100:,.2f} Ł**__를 송금하였습니다.')
+            f'{ctx.user.mention}님이 {to.mention}님에게 __**{amount / 100:,.2f} Ł**__를 송금하였습니다. {tax_message}')
 
     @command(description='돈 소지 현황을 확인합니다.')
     async def rank(self, ctx: Interaction, ephemeral: bool = True):
