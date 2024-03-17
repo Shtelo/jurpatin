@@ -232,5 +232,12 @@ def add_ppl_history(date_: date, value: int):
         database.commit()
 
 
+def add_issue_history(datetime_: datetime, value: int):
+    database = get_connection()
+    with database.cursor() as cursor:
+        cursor.execute('INSERT INTO issue_history VALUES (%s, %s)', value, datetime_)
+        database.commit()
+
+
 if __name__ == '__main__':
     set_value('test', timedelta(seconds=1239487))

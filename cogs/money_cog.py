@@ -12,7 +12,7 @@ from discord.ext.commands import Cog, Bot
 from cogs.admin_cog import OX_EMOJIS
 from util import parse_timedelta, get_const, parse_datetime, eul_reul, check_reaction, generate_tax_message
 from util.db import get_value, set_value, add_money, get_money, get_inventory, get_money_ranking, set_inventory, \
-    get_tax, add_tax, add_money_with_tax, get_everyone_id, get_total_inventory_value, add_ppl_history
+    get_tax, add_tax, add_money_with_tax, get_everyone_id, get_total_inventory_value, add_ppl_history, add_issue_history
 
 MONEY_CHECK_FEE = 50
 
@@ -145,6 +145,10 @@ class MoneyCog(Cog):
         set_value(get_const('db.ppl'), str(len(self.today_people)))
         set_value(get_const('db.yesterday_ppl'), str(previous_ppl))
         add_ppl_history(last_record.date(), len(self.today_people))
+
+        # record issue on database
+        issue = get_issue()
+        add_issue_history(last_record, issue)
 
         # get server and send statistics message
         text_channel = self.bot.get_channel(get_const('channel.general'))
@@ -378,6 +382,7 @@ class MoneyCog(Cog):
     async def issue(self, ctx: Interaction, ephemeral: bool = True):
         await ctx.response.defer(ephemeral=ephemeral)
         issue = get_issue()
+        add_issue_history(datetime.now(), issue)
         await ctx.edit_original_response(content=f'로스화의 현재 총 발행량은 __**{issue/100:,.2f} Ł**__입니다. '
                                                  f'({datetime.now()})')
 
