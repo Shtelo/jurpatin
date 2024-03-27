@@ -195,10 +195,12 @@ class MoneyCog(Cog):
 
             message = await text_channel.fetch_message(message_id)
             duration = datetime.now(timezone.utc) - message.created_at
-            await message.delete()
 
             if duration >= timedelta(hours=1):
-                await text_channel.send(f'{before.channel.mention} 채널이 비활성화되었습니다. (활성 시간: {duration})')
+                await text_channel.send(f'{before.channel.mention} 채널이 비활성화되었습니다. '
+                                        f'(활성 시간: {duration}, {message.jump_url})')
+            else:
+                await message.delete()
             today_call_duration = parse_timedelta(get_value('today_call_duration'))
             set_value('today_call_duration', today_call_duration + duration)
 
@@ -538,6 +540,7 @@ class MoneyCog(Cog):
         if isinstance(error, MissingRole):
             await ctx.response.send_message(':x: 명령어를 사용하기 위한 권한이 부족합니다!')
             return
+
 
 async def setup(bot):
     await bot.add_cog(MoneyCog(bot))
