@@ -210,7 +210,8 @@ class UtilCog(Cog):
             await ctx.response.send_message(':x: 자리비움 메시지는 32자를 넘을 수 없습니다.', ephemeral=True)
             return
 
-        self.afk_nicknames[ctx.user.id] = ctx.user.display_name
+        if ctx.user.id not in self.afk_nicknames:
+            self.afk_nicknames[ctx.user.id] = ctx.user.display_name
         await ctx.response.send_message(f'`{self.afk_nicknames[ctx.user.id]}`님이 자리를 비웁니다.', ephemeral=True)
         await ctx.user.edit(nick=message)
 
