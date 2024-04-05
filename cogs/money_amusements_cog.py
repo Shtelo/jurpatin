@@ -108,7 +108,8 @@ def get_lottery_embed(prices, win, now) -> Embed:
         color=LOTTERY_COLOR)
     embed.add_field(name='참여자', value=f'{len(prices)}명', inline=True)
     embed.add_field(name='당첨 번호', value=', '.join(map(str, sorted(win))), inline=False)
-    embed.add_field(name='최고 당첨 금액', value=f'{max(prices.values()) / 100:,.2f} Ł', inline=False)
+    if prices:
+        embed.add_field(name='최고 당첨 금액', value=f'{max(prices.values()) / 100:,.2f} Ł', inline=False)
 
     return embed
 
