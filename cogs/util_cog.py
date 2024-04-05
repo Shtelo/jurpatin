@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from pprint import pformat
 from typing import Optional
 
-from discord import Interaction, app_commands
+from discord import Interaction, app_commands, Message, Member, VoiceState, RawReactionActionEvent
 from discord.app_commands import command, Choice
 from discord.app_commands.checks import has_role
 from discord.ext.commands import Cog
@@ -46,11 +46,29 @@ async def invoke_reminder(reminder: Reminder, ctx: Interaction, reminders: list)
     reminders.remove(reminder)
 
 
+async def conditionally_unafk(member, nicks):
+    if member.id in nicks:
+        await member.edit(nick=nicks.pop(member.id))
+
+
 class UtilCog(Cog):
     reminder_group = app_commands.Group(name='reminder', description='리마인더 관련 명령어입니다.')
 
     def __init__(self):
         self.reminders = list()
+        self.afk_nicknames = dict()
+
+    @Cog.listener()
+    async def on_message(self, message: Message):
+        await conditionally_unafk(message.author, self.afk_nicknames)
+
+    @Cog.listener()
+    async def on_voice_state_update(self, member: Member, _before: VoiceState, _after: VoiceState):
+        await conditionally_unafk(member, self.afk_nicknames)
+
+    @Cog.listener()
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        await conditionally_unafk(payload.member, self.afk_nicknames)
 
     @command(name='eval', description='유르파틴 수식 내용을 확인합니다.')
     @has_role(get_const('role.harnavin'))
@@ -185,6 +203,16 @@ class UtilCog(Cog):
                     result[i] += letter
 
         await ctx.response.send_message('* ' + '\n* '.join(result))
+
+    @command(description='자리 비움 상태를 기록합니다.')
+    async def afk(self, ctx: Interaction, message: str):
+        if len(message) > 32:
+            await ctx.response.send_message(':x: 자리비움 메시지는 32자를 넘을 수 없습니다.', ephemeral=True)
+            return
+
+        self.afk_nicknames[ctx.user.id] = ctx.user.display_name
+        await ctx.response.send_message(f'`{self.afk_nicknames[ctx.user.id]}`님이 자리를 비웁니다.', ephemeral=True)
+        await ctx.user.edit(nick=message)
 
 
 async def setup(bot):
