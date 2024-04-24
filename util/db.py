@@ -178,7 +178,7 @@ def update_streak(user_id: int, streak: int, today: date, max_streak: int):
 def get_streak_rank() -> tuple[tuple[int, int]]:
     database = get_connection()
     with database.cursor() as cursor:
-        cursor.execute('SELECT id, streak FROM attendance ORDER BY streak DESC LIMIT 10')
+        cursor.execute('SELECT id, max_streak FROM attendance ORDER BY streak DESC LIMIT 10')
         return cursor.fetchall()
 
 
